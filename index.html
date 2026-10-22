@@ -211,6 +211,60 @@ select{background:var(--panel);border:1px solid var(--line);border-radius:7px;pa
 .hsrc{margin-top:10px}
 .hsrc a{color:var(--accent)}
 
+/* ---------- phone layout (body.phone): top bar, the sheet, a call dock and a tab bar ---------- */
+body:not(.phone) .ph-only{display:none!important}
+body.phone .d-only{display:none!important}
+body.phone{display:flex;flex-direction:column;height:100%;overflow:hidden}
+body.phone .top{padding:8px 16px;gap:8px;flex-wrap:nowrap}
+body.phone .brand h1{display:none}
+body.phone .brand svg{width:24px;height:24px}
+body.phone .status{font-size:12.5px;gap:2px 8px;flex:1 1 auto;line-height:1.3}
+body.phone .status .st-mode{display:none}
+body.phone .mini-score{font-size:17px}
+.ph-undo{padding:8px 12px;font-size:17px;flex:none}
+body.phone main.grid{flex:1 1 auto;min-height:0;display:block;padding:4px 16px;position:relative}
+body.phone .col{display:none}
+body.phone .sheet-col{height:100%;justify-content:center}
+body.phone .toast{position:absolute;bottom:10px;left:16px;right:16px;margin:0 auto;z-index:5;max-width:none;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 10px;box-shadow:0 4px 14px rgba(0,0,0,.15);font-size:13px}
+body.phone .toast:empty{display:none}
+.ph-dock{background:var(--panel);border-top:1px solid var(--line);padding:8px 16px;display:grid;gap:8px}
+.ph-dock.anim .ph-call{display:none}
+.ph-dock:not(.anim) #phSweepSlot{display:none}
+.ph-w{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:8px;align-items:center}
+.ph-step{height:44px;justify-content:center;font-size:22px;padding:0}
+.ph-wread{display:flex;gap:8px;align-items:baseline;justify-content:center;font-variant-numeric:tabular-nums;min-width:0;white-space:nowrap;overflow:hidden}
+.ph-wread b{font-family:var(--f-display);font-size:24px;line-height:1}
+.ph-wread span{font-family:var(--f-display);font-size:15px;color:var(--accent);text-transform:uppercase;letter-spacing:.04em}
+#phW{-webkit-appearance:none;appearance:none;width:100%;height:12px;border-radius:6px;margin:8px 0 2px;background:linear-gradient(to right,var(--z-guard) 0 30%,var(--z-house) 30% 62%,var(--z-board) 62% 72%,var(--z-hit) 72% 100%)}
+#phW::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:30px;height:30px;border-radius:50%;background:var(--panel);border:3px solid var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.25)}
+#phW::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--panel);border:3px solid var(--ink)}
+#phW:disabled{opacity:.5}
+.ph-zones{position:relative;height:14px;font-family:var(--f-display);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.ph-zones span{position:absolute;transform:translateX(-50%)}
+.ph-row2{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ph-row2 .seg button{padding:10px}
+.ph-row2 .check{font-size:13px;margin:0!important}
+.ph-row2 .throw{flex:1 1 130px;margin:0;width:auto;min-height:44px}
+body.phone .sweeps{width:100%}
+body.phone .sweeps{flex-wrap:nowrap;align-items:stretch}
+body.phone .sweep{flex:1 1 0;min-width:0;min-height:88px;font-size:15px;line-height:1.25}
+body.phone .sweep kbd{display:none}
+body.phone .review{padding:6px;gap:4px}
+body.phone .review .rvlbl{flex-basis:100%;order:-1;font-size:12.5px}
+.ph-tabs{display:grid;grid-template-columns:repeat(5,1fr);background:var(--panel);border-top:1px solid var(--line)}
+.ph-tabs button{border:0;background:none;padding:6px 0 8px;display:grid;justify-items:center;gap:2px;font-size:11px;font-weight:700;color:var(--muted);min-height:52px}
+.ph-tabs button[aria-pressed="true"]{color:var(--accent)}
+.ph-tabs svg{width:22px;height:22px}
+.ph-backdrop{position:fixed;inset:0;background:rgba(5,15,25,.4);z-index:19}
+.ph-sheet{position:fixed;left:0;right:0;bottom:0;max-height:82%;overflow:auto;background:var(--bg);border-radius:14px 14px 0 0;z-index:20;padding:0 16px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 30px rgba(0,0,0,.2)}
+.ph-sheet-h{position:sticky;top:0;background:var(--bg);display:flex;justify-content:space-between;align-items:center;padding:12px 0 8px;z-index:1}
+.ph-sheet-h h2{font-family:var(--f-display);font-size:21px;margin:0}
+.ph-sheet [data-panel]{display:grid;gap:12px}
+.ph-sheet .toolbar{justify-content:flex-start}
+.ph-sheet .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ph-sheet .actions .btn{justify-content:center;padding:11px}
+.ph-sheet .hist{max-height:none}
+
 @media (max-width:1100px){
   .grid{grid-template-columns:minmax(0,1fr) minmax(270px,320px)}
   .col-left{grid-column:1 / -1;order:3;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));align-items:start}
@@ -234,7 +288,9 @@ select{background:var(--panel);border:1px solid var(--line);border-radius:7px;pa
     <button class="btn" id="btnHistoric">Historic shots</button>
     <button class="btn" id="btnRandom">Random scenario</button>
     <button class="btn" id="btnUndo">Undo shot</button>
+    <button class="btn" id="btnPhoneLayout" hidden>Phone layout</button>
   </div>
+  <button class="btn ph-only ph-undo" id="phUndo" aria-label="Undo shot" title="Undo shot">&#8630;</button>
 </header>
 
 <main class="grid">
@@ -243,17 +299,17 @@ select{background:var(--panel);border:1px solid var(--line);border-radius:7px;pa
       <div class="card-h"><h2>Historic shot</h2><button class="btn small" id="hBrowse">All positions</button></div>
       <div id="histBody"></div>
     </div>
-    <div class="card">
+    <div class="card" id="cardScore">
       <div class="card-h"><h2>Scoreboard</h2><span class="pill" id="modePill"></span></div>
       <div class="sb-wrap"><table class="sb" id="scoreboard"></table></div>
       <div class="rocks" id="rocksLeft"></div>
     </div>
-    <div class="card">
+    <div class="card" id="cardAnalysis">
       <div class="card-h"><h2>Analysis</h2><button class="btn small primary" id="btnSuggest">Suggest a shot</button></div>
       <div class="read" id="read"></div>
       <div id="sugArea"></div>
     </div>
-    <div class="card">
+    <div class="card" id="cardEnd">
       <div class="card-h"><h2>This end</h2><button class="btn small" id="btnReview">Review end</button></div>
       <ol class="hist" id="history"></ol>
     </div>
@@ -328,10 +384,10 @@ select{background:var(--panel);border:1px solid var(--line);border-radius:7px;pa
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M11 15.5C11 9 10 5.5 5.5 3.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M2.2 2.2L4.6 5.6L6.4 1.6z" fill="currentColor"/></svg>Out-turn</button>
       </div>
       <div class="note" id="broomRead"></div>
-      <label class="check" style="margin-top:10px"><input type="checkbox" id="showPath"> Show predicted path</label>
+      <label class="check" id="pathLabel" style="margin-top:10px"><input type="checkbox" id="showPath"> <span class="d-only">Show predicted path</span><span class="ph-only">Path</span></label>
       <button class="btn primary throw" id="btnThrow">Throw</button>
     </div>
-    <div class="card">
+    <div class="card" id="cardIce">
       <div class="card-h"><h2>Ice & players</h2></div>
       <div class="field">
         <label for="iceSpeed">Ice speed (draw to tee) <span id="iceSpeedV"></span></label>
@@ -360,6 +416,39 @@ select{background:var(--panel);border:1px solid var(--line);border-radius:7px;pa
     </div>
   </section>
 </main>
+
+<div class="ph-dock ph-only" id="phDock">
+  <div id="phDockTop"></div>
+  <div class="ph-call">
+    <div class="ph-w">
+      <button class="btn ph-step" id="phMinus" aria-label="Lighter by 0.1 second">&minus;</button>
+      <div>
+        <div class="ph-wread"><b id="phT"></b><span id="phZone"></span></div>
+        <input type="range" id="phW" min="0" max="1000" step="1" aria-label="Weight">
+        <div class="ph-zones" aria-hidden="true"><span style="left:15%">Guard</span><span style="left:46%">House</span><span style="left:67%">Board</span><span style="left:86%">Hit</span></div>
+      </div>
+      <button class="btn ph-step" id="phPlus" aria-label="Heavier by 0.1 second">+</button>
+    </div>
+    <div class="ph-row2" id="phRow2"></div>
+  </div>
+  <div id="phSweepSlot"></div>
+</div>
+<nav class="ph-tabs ph-only" id="phTabs" aria-label="Panels">
+  <button data-tab="call" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="18" rx="3" fill="currentColor"/></svg><span>Call</span></button>
+  <button data-tab="read" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg><span>Read</span></button>
+  <button data-tab="end" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>End</span></button>
+  <button data-tab="edit" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1 11-11-3-3L5 16z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span id="phEditLbl">Edit</span></button>
+  <button data-tab="more" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/></svg><span>More</span></button>
+</nav>
+<div class="ph-backdrop" id="phBackdrop" hidden></div>
+<section class="ph-sheet" id="phSheet" hidden aria-labelledby="phTitle">
+  <div class="ph-sheet-h"><h2 id="phTitle"></h2><button class="btn small" id="phClose">Done</button></div>
+  <div data-panel="read"></div>
+  <div data-panel="end"></div>
+  <div data-panel="edit"></div>
+  <div data-panel="more"></div>
+  <div data-panel="more-tail" class="ph-more-tail"><button class="btn" id="phDesktop">Use the desktop layout</button></div>
+</section>
 
 <div class="modal" id="newModal" hidden>
   <div class="card" role="dialog" aria-modal="true" aria-labelledby="ngTitle">
@@ -800,6 +889,8 @@ const PLAY = { real: { out: 1, inn: 1 }, fast: { out: 5, inn: 1.7 }, instant: nu
 const hammerSvg = '<span class="hammer" title="Hammer (last stone)"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2" width="9" height="5" rx="1" fill="currentColor"/><rect x="5" y="6" width="2.4" height="9" rx="1" fill="currentColor"/></svg></span>';
 
 let S = null;
+// phone layout: which panel is open, and where moved nodes came from so the desktop layout can be restored
+const PH = { on: false, moved: [], tab: 'call' };
 const UI = { tool: 'broom', sweeping: [false, false], review: null, sugCtx: null, broom: { x: -0.7, y: 0 }, u: 0.45, spin: 1, pick: null, showPath: false, anim: null, busy: false,
   sugs: null, sugFor: -1, hover: null, preview: null, markup: [], drag: null, aiToken: 0, thinking: '',
   set: { playback: 'fast', you: 'perfect', cpu: 'competitive' } };
@@ -875,7 +966,7 @@ function layout() {
   if (cw < 120) return;
   const narrow = innerWidth < 720;
   const viewH = VIEW_BOT - VIEW_TOP, mainAsp = 2 * HW / viewH, miniAsp = 2 * HW / (SHEET_BOT - SHEET_TOP);
-  let H = narrow ? Math.min(innerHeight * 0.74, 680) : clamp(innerHeight - 150, 440, 940);
+  let H = PH.on ? Math.max(200, wrap.clientHeight - 6) : narrow ? Math.min(innerHeight * 0.74, 680) : clamp(innerHeight - 150, 440, 940);
   const need = H * (mainAsp + miniAsp) + 10;
   if (need > cw) H = (cw - 10) / (mainAsp + miniAsp);
   SC = H / viewH; MSC = H / (SHEET_BOT - SHEET_TOP);
@@ -1114,6 +1205,12 @@ function renderDial() {
   else if (y >= HACK) d = 'Through the house, stops before the hack';
   else d = `Takeout weight, ${(v).toFixed(2)} m/s at the hog line`;
   $('#wdesc').textContent = d;
+  const pw = $('#phW');
+  if (pw) {
+    pw.value = Math.round(UI.u * 1000); pw.disabled = !canAnalyze();
+    $('#phT').textContent = T == null ? '\u2014' : T.toFixed(1) + 's'; $('#phZone').textContent = zone;
+    $('#phMinus').disabled = $('#phPlus').disabled = !canAnalyze();
+  }
 }
 
 // ---------- preview ----------
@@ -1200,7 +1297,7 @@ function doThrow(isCpu) {
   UI.preview = null; UI.hover = null; UI.sugs = null;
   UI.anim = { sim: createSim(S.stones, sh, false), before: S.stones, shotNo: S.shotNo, team, isCpu, called: base, shot: sh,
     last: performance.now(), clock: 0, prev: null, prevT: 0, sweeps: [], maskKey: '', mask: null, cpuNext: 0, cpuOn: false };
-  toast(isCpu ? `<b>${TEAM[team]}</b> throws stone ${S.shotNo + 1}. You can sweep it once it passes the tee line.` : `<b>${TEAM[team]}</b> throws stone ${S.shotNo + 1}. Hold <b>Sweep</b> (or Space) to carry it farther and straighter.`);
+  toast(isCpu ? `<b>${TEAM[team]}</b> throws stone ${S.shotNo + 1}. You can sweep it once it passes the tee line.` : `<b>${TEAM[team]}</b> throws stone ${S.shotNo + 1}. Hold <b>Sweep</b>${PH.on ? '' : ' (or Space)'} to carry it farther and straighter.`);
   renderAll();
   if (!PLAY[UI.set.playback]) { finishAnim(); return; }
   requestAnimationFrame(animStep);
@@ -1289,6 +1386,7 @@ async function suggest() {
   renderAll();
 }
 function applySug(c) {
+  if (PH.on) openPanel('call');
   UI.broom = { x: c.shot.bx, y: c.shot.by }; UI.u = c.shot.u; UI.spin = c.shot.spin; UI.hover = null;
   UI.showPath = true; $('#showPath').checked = true;
   renderAll(); updatePreview(); save();
@@ -1496,7 +1594,11 @@ $('#histList').addEventListener('click', e => { const b = e.target.closest('.hpo
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#histModal').hidden = true; });
 
 // ---------- rendering panels ----------
-function toast(h) { $('#toast').innerHTML = h; }
+let toastTimer = 0;
+function toast(h) {
+  $('#toast').innerHTML = h; clearTimeout(toastTimer);
+  if (PH.on && h) toastTimer = setTimeout(() => { $('#toast').innerHTML = ''; }, 6000);   // on a phone it floats over the sheet
+}
 function renderStatus() {
   const team = throwingTeam();
   const modeName = S.puzzle ? 'Historic shot' : { cpu: 'vs computer', friend: 'vs a friend', practice: 'Practice' }[S.mode];
@@ -1504,7 +1606,7 @@ function renderStatus() {
   if (S.mode !== 'practice' || S.puzzle) h += `<span class="mini-score"><span class="chip t0"></span>${totals(0)}<span style="color:var(--muted)">–</span>${totals(1)}<span class="chip t1" style="margin:0 0 0 6px"></span></span>`;
   if (S.gameOver) h += `<span><b>Final</b></span>`;
   else h += `<span>End <b>${S.end + 1}</b>${S.mode === 'practice' ? '' : ' of ' + S.nEnds} · Stone <b>${Math.min(16, S.shotNo + 1)}</b> of 16 · ${S.endOver ? 'End complete' : `<b>${TEAM[team]}</b> to throw`}</span>`;
-  h += `<span>${modeName}${S.sample ? ' · sample position' : S.shared ? ' · shared position' : ''}</span>`;
+  h += `<span class="st-mode">${modeName}${S.sample ? ' · sample position' : S.shared ? ' · shared position' : ''}</span>`;
   if (UI.review) h += `<span class="pill fgz">Reviewing this end</span>`;
   $('#status').innerHTML = h;
   $('#modePill').textContent = modeName;
@@ -1616,6 +1718,13 @@ function renderControls() {
   tb.textContent = UI.review ? 'Reviewing: back to live to throw' : S.gameOver ? 'Game over' : S.endOver ? 'End complete' : isCpuTurn() ? 'Computer’s turn' : `Throw ${TEAM[team]}’s stone`;
   $('#btnSuggest').disabled = explore;
   $('#btnUndo').disabled = !!UI.anim || !S.hist.length || !!UI.review;
+  $('#phUndo').disabled = $('#btnUndo').disabled;
+  // the dock keeps its height while it shows the sweep buttons, so the sheet doesn't resize mid-throw
+  const dock = $('#phDock'), sweeping = !!UI.anim && !UI.anim.replay;
+  if (PH.on && sweeping && !dock.classList.contains('anim')) dock.style.minHeight = dock.offsetHeight + 'px';
+  if (!sweeping) dock.style.minHeight = '';
+  dock.classList.toggle('anim', sweeping);
+  renderTabs();
   $('#btnReview').disabled = !!UI.anim || UI.busy || !S.log.length;
   $('#btnReview').hidden = !!UI.review;
   $('#btnCopyLink').disabled = $('#btnSaveImg').disabled = !!UI.anim;
@@ -1655,6 +1764,7 @@ function renderAll() { renderStatus(); renderHist(); renderScoreboard(); renderR
 // ---------- review actions ----------
 function enterReview(p) {
   if (UI.anim || UI.busy || !S.log.length) return;
+  if (PH.on) openPanel('call');
   UI.review = { p: clamp(p, 0, S.log.length), confirm: false }; UI.sugs = null; UI.hover = null;
   $('#banner').hidden = true; $('#shareBox').hidden = true;
   toast('Reviewing the end. Step through it, replay a stone, or ask <b>Suggest a shot</b> what should have been called.');
@@ -1835,7 +1945,7 @@ $('#wMinus').onclick = () => stepTime(-1);
 $('#wPlus').onclick = () => stepTime(1);
 $('#handle').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || !canAnalyze()) return; UI.spin = +b.dataset.spin; UI.hover = null; renderControls(); renderBroomRead(); updatePreview(); save(); });
 $('#pickTeam').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || controlsLocked()) return; UI.pick = +b.dataset.team; UI.sugs = null; renderAll(); updatePreview(); });
-$('#tools').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; UI.tool = b.dataset.tool; main.style.cursor = UI.tool === 'move' ? 'grab' : 'crosshair'; renderControls(); });
+$('#tools').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; UI.tool = b.dataset.tool; main.style.cursor = UI.tool === 'move' ? 'grab' : 'crosshair'; renderControls(); if (PH.on) openPanel('call', true); });
 $('#btnClearPen').onclick = () => { UI.markup = []; draw(); };
 $('#btnClearStones').onclick = () => { if (UI.anim || UI.busy) return; S.stones = []; edited(); updatePreview(); toast('Sheet cleared. Use the Add tools to set up a position.'); };
 $('#showPath').onchange = e => { UI.showPath = e.target.checked; updatePreview(); };
@@ -1859,12 +1969,75 @@ mq.addEventListener ? mq.addEventListener('change', retheme) : mq.addListener(re
 new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 new ResizeObserver(() => layout()).observe($('.sheet-col'));
 
+// ---------- phone layout ----------
+// The same controls and panels as the desktop page, moved into a dock, a tab bar and bottom sheets.
+const LAYOUT_KEY = 'housecall.layout';
+const phoneMQ = matchMedia('(max-width: 760px), (pointer: coarse) and (max-height: 500px)');
+const TOOL_NAMES = { move: 'Move', add0: 'Add red', add1: 'Add yellow', erase: 'Remove', pen: 'Draw' };
+function layoutPref() { try { return localStorage.getItem(LAYOUT_KEY); } catch (e) { return null; } }
+function setLayoutPref(v) { try { v ? localStorage.setItem(LAYOUT_KEY, v) : localStorage.removeItem(LAYOUT_KEY); } catch (e) {} }
+function phMove(node, target) { PH.moved.push({ node, parent: node.parentNode, next: node.nextSibling }); target.appendChild(node); }
+function enterPhone() {
+  if (PH.on) return;
+  PH.on = true; document.body.classList.add('phone');
+  const P = n => document.querySelector(`#phSheet [data-panel="${n}"]`);
+  phMove($('#histCard'), P('read')); phMove($('#cardAnalysis'), P('read')); phMove($('#cardScore'), P('read'));
+  phMove($('#cardEnd'), P('end'));
+  phMove($('.toolbar'), P('edit')); phMove($('#shareBox'), P('edit'));
+  phMove($('.top .actions'), P('more')); phMove($('#cardIce'), P('more'));
+  phMove($('#reviewBar'), $('#phDockTop')); phMove($('.sweeps'), $('#phSweepSlot'));
+  phMove($('#pickTeam'), $('#phRow2')); phMove($('#handle'), $('#phRow2')); phMove($('#pathLabel'), $('#phRow2')); phMove($('#btnThrow'), $('#phRow2'));
+  phMove($('#toast'), $('main'));
+  openPanel('call'); renderAll(); layout();
+}
+function exitPhone() {
+  if (!PH.on) return;
+  openPanel('call');
+  for (const m of PH.moved.reverse()) m.parent.insertBefore(m.node, m.next);
+  PH.moved = []; PH.on = false; document.body.classList.remove('phone');
+  renderAll(); layout();
+}
+function applyLayoutMode() {
+  const pref = layoutPref(), phone = pref ? pref === 'phone' : phoneMQ.matches;
+  phone ? enterPhone() : exitPhone();
+  $('#btnPhoneLayout').hidden = PH.on || !phoneMQ.matches;
+}
+function openPanel(tab, keepTool) {
+  if (tab === 'call' && !keepTool && UI.tool !== 'broom' && PH.tab === 'call') { UI.tool = 'broom'; main.style.cursor = 'crosshair'; }
+  PH.tab = tab;
+  const sh = $('#phSheet'), open = tab !== 'call';
+  sh.hidden = !open; $('#phBackdrop').hidden = !open;
+  if (open) {
+    $('#phTitle').textContent = { read: 'Analysis', end: 'This end', edit: 'Edit the sheet', more: 'Game & settings' }[tab];
+    sh.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== tab && !(tab === 'more' && p.dataset.panel === 'more-tail'); });
+    sh.scrollTop = 0;
+  }
+  renderTabs();
+}
+function renderTabs() {
+  if (!PH.on) return;
+  $('#phTabs').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.tab === PH.tab));
+  $('#phEditLbl').textContent = TOOL_NAMES[UI.tool] || 'Edit';
+}
+$('#phTabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) openPanel(b.dataset.tab === PH.tab && b.dataset.tab !== 'call' ? 'call' : b.dataset.tab); });
+$('#phClose').onclick = () => openPanel('call', true);
+$('#phBackdrop').onclick = () => openPanel('call', true);
+$('#phSheet').addEventListener('click', e => { if (e.target.closest('.actions .btn')) openPanel('call', true); });
+$('#phW').addEventListener('input', e => { if (canAnalyze()) setWeight(+e.target.value / 1000); else renderDial(); });
+$('#phMinus').onclick = () => stepTime(-1);
+$('#phPlus').onclick = () => stepTime(1);
+$('#phUndo').onclick = undo;
+$('#phDesktop').onclick = () => { setLayoutPref(phoneMQ.matches ? 'desktop' : null); applyLayoutMode(); };
+$('#btnPhoneLayout').onclick = () => { setLayoutPref(null); applyLayoutMode(); };
+(phoneMQ.addEventListener ? phoneMQ.addEventListener('change', applyLayoutMode) : phoneMQ.addListener(applyLayoutMode));
+new ResizeObserver(() => { if (PH.on) layout(); }).observe($('#phDock'));
+
 // ---------- boot ----------
 readColors();
 if (!load()) S = sampleState();
 if (!S.hist) S.hist = [];
 calibrateIce();
-buildDial(); renderIce(); layout(); renderAll(); updatePreview();
+buildDial(); renderIce(); applyLayoutMode(); layout(); renderAll(); updatePreview();
 if (S.endOver) showEndBanner();
 else if (S.gameOver) { $('#banner').hidden = true; }
 else if (isCpuTurn()) cpuMove();
