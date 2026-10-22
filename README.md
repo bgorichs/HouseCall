@@ -9,6 +9,6 @@ A top-down curling app for calling, analyzing and playing out shots, modeled on 
 - **Copy link** shares the position and your call; **Save image** saves a picture of the house.
 - Play against the computer, a friend, or in practice mode, with free guard zone, hog line and hammer rules.
 
-Everything lives in a single file, `index.html`, with no build step. Open it in a browser to run it.
+**Play it:** https://bgorichs.github.io/HouseCall/ (no sign-in needed)
 
-Published version: https://claude.ai/artifact/2aEHPcKfdyfaA824tJbcRs
+Everything lives in a single file, `index.html`, with no build step. GitHub Pages serves it straight from `main`, and it also opens fine from disk. A copy also runs as a Claude artifact: https://claude.ai/artifact/2aEHPcKfdyfaA824tJbcRs

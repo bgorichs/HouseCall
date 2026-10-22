@@ -1,3 +1,4 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>House Call</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1548,6 +1549,9 @@ function resumeFromReview() {
 
 // ---------- sharing ----------
 const ARTIFACT_URL = 'https://claude.ai/artifact/2aEHPcKfdyfaA824tJbcRs';
+// Running as a plain web page (e.g. GitHub Pages) rather than inside the claude.ai viewer: share links point
+// back at this page, and images download directly.
+const STANDALONE = !window.claude;
 // Position link: version, stone number + hammer + handle, broom (cm) and weight, then 3 bytes per stone
 // (team bit, x and y in cm). Base64url keeps it to the characters a link's #anchor may carry.
 function encodePos() {
@@ -1581,8 +1585,9 @@ function showShareBox(html) {
   const inp = box.querySelector('input'); if (inp) { inp.focus(); inp.select(); }
 }
 function copyLink() {
-  const url = ARTIFACT_URL + '#' + encodePos();
-  const done = () => { $('#shareBox').hidden = true; toast('Link copied. It opens this position and your call for anyone you\u2019ve shared House Call with.'); };
+  const url = (STANDALONE ? location.origin + location.pathname : ARTIFACT_URL) + '#' + encodePos();
+  const who = STANDALONE ? 'for anyone you send it to' : 'for anyone you\u2019ve shared House Call with';
+  const done = () => { $('#shareBox').hidden = true; toast(`Link copied. It opens this position and your call ${who}.`); };
   const manual = () => showShareBox(`<label class="note" for="shareUrl">Copy this link to share the position:</label><input id="shareUrl" readonly value="${url}">`);
   try { navigator.clipboard.writeText(url).then(done, manual); } catch (e) { manual(); }
 }
@@ -1608,6 +1613,11 @@ async function saveImage() {
   if (UI.anim) return;
   toast('Preparing the image\u2026');
   const blob = await renderShareImage(), name = `house-call-end${S.end + 1}-stone${Math.min(16, viewShotNo() + 1)}.png`;
+  if (STANDALONE) {   // an ordinary web page can download directly
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    toast('Image saved.'); return;
+  }
   downloadsP = downloadsP || (window.claude && window.claude.use ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null));
   const dl = await downloadsP;
   if (dl) {
@@ -1710,3 +1720,5 @@ else if (isCpuTurn()) cpuMove();
 if (S.sample) toast('Sample position: Red throws stone 11 and Yellow has the hammer. Place the broom, set the weight, and throw, or try <b>Suggest a shot</b>.');
 checkShared();
 </script>
+
+</body></html>
