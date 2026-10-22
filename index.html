@@ -211,6 +211,11 @@ select{background:var(--panel);border:1px solid var(--line);border-radius:7px;pa
 .hsrc{margin-top:10px}
 .hsrc a{color:var(--accent)}
 
+/* touch loupe: magnified view of the spot under the finger */
+.loupe{position:fixed;z-index:30;pointer-events:none;display:grid;justify-items:center;gap:6px}
+.loupe canvas{display:block;border-radius:50%;border:3px solid var(--panel);box-shadow:0 0 0 1px var(--line),0 8px 24px rgba(0,0,0,.28)}
+.loupe-lbl{background:var(--ink);color:var(--panel);font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;white-space:nowrap;font-variant-numeric:tabular-nums}
+
 /* ---------- phone layout (body.phone): top bar, the sheet, a call dock and a tab bar ---------- */
 body:not(.phone) .ph-only{display:none!important}
 body.phone .d-only{display:none!important}
@@ -449,6 +454,8 @@ body.phone .review .rvlbl{flex-basis:100%;order:-1;font-size:12.5px}
   <div data-panel="more"></div>
   <div data-panel="more-tail" class="ph-more-tail"><button class="btn" id="phDesktop">Use the desktop layout</button></div>
 </section>
+
+<div class="loupe" id="loupe" hidden aria-hidden="true"><canvas id="loupeCv"></canvas><div class="loupe-lbl" id="loupeLbl"></div></div>
 
 <div class="modal" id="newModal" hidden>
   <div class="card" role="dialog" aria-modal="true" aria-labelledby="ngTitle">
@@ -1065,6 +1072,7 @@ function draw() {
   if (!S || !COL.ice) return;
   drawScene(mctx, main.width / DPR, main.height / DPR, DPR, pebbleCanvas);
   drawMini();
+  drawLoupe();
 }
 function drawScene(ctx, w, h, scale, pebble, oy = 0) {
   ctx.setTransform(scale, 0, 0, scale, 0, oy * scale);
@@ -1229,7 +1237,7 @@ function updatePreview() {
 }
 
 // ---------- pointer on the sheet ----------
-function stoneAt(x, y) { let best = null, bd = R * 1.15; for (const s of S.stones) { const d = Math.hypot(s.x - x, s.y - y); if (d < bd) { bd = d; best = s; } } return best; }
+function stoneAt(x, y, tol = R * 1.15) { let best = null, bd = tol; for (const s of S.stones) { const d = Math.hypot(s.x - x, s.y - y); if (d < bd) { bd = d; best = s; } } return best; }
 // Default the handle so the stone curls back toward the center: broom left of center (the skip's right,
 // facing the thrower) → in-turn; broom right → out-turn. It only changes when the broom moves to the other
 // side of the center line, so small adjustments never flip a handle you chose.
@@ -1240,28 +1248,73 @@ function autoTurn(prevX) {
 }
 function evPos(e) { const rc = main.getBoundingClientRect(); return [wx(e.clientX - rc.left), wy(e.clientY - rc.top)]; }
 function edited() { UI.sugs = null; renderAll(); save(); }
+// ---------- loupe: a magnified view above the finger while placing the broom or a stone ----------
+const LOUPE = { size: 128, zoom: 2.6, lift: 44 };
+function startLoupe(e) {
+  if (e.pointerType === 'mouse' || !UI.drag || (UI.drag.kind !== 'broom' && UI.drag.kind !== 'stone')) return;
+  UI.loupe = { cx: e.clientX, cy: e.clientY };
+  $('#loupe').hidden = false; draw();
+}
+function moveLoupe(e) { if (UI.loupe) { UI.loupe.cx = e.clientX; UI.loupe.cy = e.clientY; } }
+function endLoupe() { if (UI.loupe) { UI.loupe = null; $('#loupe').hidden = true; } }
+function loupeLabel() {
+  const d = UI.drag;
+  if (d && d.kind === 'stone') {
+    const dist = Math.hypot(d.s.x, d.s.y);
+    return `${TEAM[d.s.team]} stone · ${dist - R <= HOUSE ? `${Math.round(dist * 100)} cm from the pin` : `${(d.s.y).toFixed(2)} m above the tee`}`;
+  }
+  const b = UI.broom, side = Math.abs(b.x) < 0.03 ? 'on center' : `${Math.abs(b.x).toFixed(2)} m ${b.x < 0 ? 'left' : 'right'}`;
+  const depth = Math.abs(b.y) < 0.05 ? 'tee line' : `${Math.abs(b.y).toFixed(2)} m ${b.y < 0 ? 'back' : 'up'}`;
+  return `Broom ${side} · ${depth}`;
+}
+// Called at the end of every draw, so it always magnifies what the sheet shows (broom, stones, path).
+function drawLoupe() {
+  const L = UI.loupe, d = UI.drag; if (!L || !d) return;
+  const { size, zoom, lift } = LOUPE, cv = $('#loupeCv'), k = DPR;
+  if (cv.width !== size * k) { cv.width = cv.height = size * k; cv.style.width = cv.style.height = size + 'px'; }
+  const at = d.kind === 'stone' ? d.s : UI.broom, px = sx(at.x), py = sy(at.y), half = size / zoom / 2;
+  const c = cv.getContext('2d');
+  c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = COL.ice; c.fillRect(0, 0, cv.width, cv.height);
+  c.drawImage(main, (px - half) * k, (py - half) * k, 2 * half * k, 2 * half * k, 0, 0, size * k, size * k);
+  c.setTransform(k, 0, 0, k, 0, 0);
+  const m = size / 2; c.strokeStyle = COL.ink; c.globalAlpha = 0.75; c.lineWidth = 1.2;
+  c.beginPath(); c.moveTo(m - 14, m); c.lineTo(m - 4, m); c.moveTo(m + 4, m); c.lineTo(m + 14, m);
+  c.moveTo(m, m - 14); c.lineTo(m, m - 4); c.moveTo(m, m + 4); c.lineTo(m, m + 14); c.stroke(); c.globalAlpha = 1;
+  // sit above the finger like a keyboard key preview; drop below it near the top of the screen
+  const box = $('#loupe'), w = size + 6, vw = document.documentElement.clientWidth;
+  let top = L.cy - lift - w - 26; if (top < 8) top = L.cy + lift;
+  box.style.left = clamp(L.cx - w / 2, 8, vw - w - 8) + 'px'; box.style.top = top + 'px';
+  $('#loupeLbl').textContent = loupeLabel();
+}
 main.addEventListener('pointerdown', e => {
   if (UI.anim) { skipAnim(); return; }
   if (UI.busy || (S.gameOver && !UI.review)) return;
-  const [x, y] = evPos(e); main.setPointerCapture(e.pointerId);
-  const t = UI.tool;
+  const [x, y] = evPos(e);
+  try { main.setPointerCapture(e.pointerId); } catch (err) {}
+  const t = UI.tool, grab = e.pointerType === 'mouse' ? R * 1.15 : R * 2.4;   // fingers get a bigger target
+  try { mainPointerDown(e, x, y, t, grab); } finally { startLoupe(e); }
+});
+function mainPointerDown(e, x, y, t, grab) {
   if (UI.review && t !== 'broom' && t !== 'pen') { toast('Choose <b>Back to live</b> or <b>Play on from here</b> before moving stones.'); return; }
   if (t === 'broom') { if (!UI.review && (S.endOver || isCpuTurn())) return; UI.hover = null; UI.drag = { kind: 'broom' }; const px = UI.broom.x; UI.broom = { x: clamp(x, -HW, HW), y: clamp(y, VIEW_TOP, VIEW_BOT) }; autoTurn(px); renderBroomRead(); updatePreview(); }
-  else if (t === 'move') { const s = stoneAt(x, y); if (s) UI.drag = { kind: 'stone', s }; }
+  else if (t === 'move') { const s = stoneAt(x, y, grab); if (s) UI.drag = { kind: 'stone', s }; }
   else if (t === 'add0' || t === 'add1') {
     if (Math.abs(x) > HW - R || y > HOG + R) return;
     const s = { id: S.nextId++, team: +t[3], x, y, ang: Math.random() * 6 }; S.stones.push(s); UI.drag = { kind: 'stone', s }; edited();
   }
-  else if (t === 'erase') { const s = stoneAt(x, y); if (s) { S.stones = S.stones.filter(o => o !== s); edited(); } }
+  else if (t === 'erase') { const s = stoneAt(x, y, grab); if (s) { S.stones = S.stones.filter(o => o !== s); edited(); } }
   else if (t === 'pen') { const st = [[x, y]]; UI.markup.push(st); UI.drag = { kind: 'pen', st }; }
-});
+}
 main.addEventListener('pointermove', e => {
   const d = UI.drag; if (!d) return; const [x, y] = evPos(e);
+  moveLoupe(e);
   if (d.kind === 'broom') { const px = UI.broom.x; UI.broom = { x: clamp(x, -HW, HW), y: clamp(y, VIEW_TOP, VIEW_BOT) }; autoTurn(px); renderBroomRead(); updatePreview(); }
-  else if (d.kind === 'stone') { d.s.x = clamp(x, -HW + R, HW - R); d.s.y = clamp(y, BACK - R + 0.01, HOG + R); UI.sugs = null; updatePreview(); renderRead(); }
+  else if (d.kind === 'stone') { d.s.x = clamp(x, -HW + R, HW - R); d.s.y = clamp(y, BACK - R + 0.01, HOG + R); UI.sugs = null; updatePreview(); renderRead(); draw(); }
   else if (d.kind === 'pen') { d.st.push([x, y]); draw(); }
 });
-main.addEventListener('pointerup', () => { const d = UI.drag; UI.drag = null; if (d && (d.kind === 'stone' || d.kind === 'broom')) { save(); if (d.kind === 'stone') edited(); } });
+const endDrag = () => { endLoupe(); const d = UI.drag; UI.drag = null; if (d && (d.kind === 'stone' || d.kind === 'broom')) { save(); if (d.kind === 'stone') edited(); } };
+main.addEventListener('pointerup', endDrag);
+main.addEventListener('pointercancel', endDrag);
 
 // ---------- throwing ----------
 function controlsLocked() { return !!UI.anim || UI.busy || !!UI.review || S.endOver || S.gameOver || isCpuTurn(); }
