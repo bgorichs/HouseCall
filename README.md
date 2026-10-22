@@ -3,8 +3,10 @@
 A top-down curling app for calling, analyzing and playing out shots, modeled on curling.gg.
 
 - Place the broom to call the ice; the handle auto-sets when the broom crosses the center line.
-- Set weight on a hog-to-hog dial; hold **Sweep** (or Space) during a throw to carry the stone farther and straighter.
-- **Suggest a shot** tests ~1,000 calls, checks the opponent's best reply, and rates each suggestion's difficulty.
+- Set weight on a hog-to-hog dial; hold **Sweep** during a throw to carry a stone farther and straighter. Each team sweeps its own stones before the tee line; either team may sweep past it. The computer sweeps its own calls.
+- **Suggest a shot** tests ~1,000 calls, checks the opponent's best reply, and rates each suggestion's difficulty with a one-line reason.
+- **Review end** steps back through the end stone by stone, replays any throw exactly (sweeping included), and can play on from an earlier position.
+- **Copy link** shares the position and your call; **Save image** saves a picture of the house.
 - Play against the computer, a friend, or in practice mode, with free guard zone, hog line and hammer rules.
 
 Everything lives in a single file, `index.html`, with no build step. Open it in a browser to run it.
