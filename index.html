@@ -184,6 +184,33 @@ select{background:var(--panel);border:1px solid var(--line);border-radius:7px;pa
 .opt small{display:block;font-weight:400;color:var(--muted);font-size:11.5px;margin-top:2px}
 .opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
 
+/* historic shots */
+.modal .card.wide{width:min(760px,100%)}
+.hgame{margin-top:14px}
+.hgh{display:grid;gap:2px;margin-bottom:8px}
+.hgh span{color:var(--muted);font-size:12.5px}
+.hgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.hpos{display:grid;grid-template-columns:56px 1fr;gap:10px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--soft);border-radius:8px;padding:8px}
+.hpos:hover,.hpos:focus-visible{border-color:var(--accent)}
+.hpos canvas{width:56px;height:56px;border-radius:50%}
+.hpos .ht{display:grid;gap:3px;min-width:0}
+.hpos .ht small{color:var(--muted);font-size:12px;font-weight:400}
+.hpos .pills{display:flex;gap:5px;flex-wrap:wrap}
+.pill.ok{background:var(--good);color:var(--panel);border-color:transparent}
+.hh{font-family:var(--f-display);font-size:21px;font-weight:600;line-height:1.1}
+.hmeta{color:var(--muted);font-size:12.5px;margin:4px 0 8px}
+.hcard p{margin:0 0 8px}
+.hprompt{font-weight:700}
+.hpro{border-top:1px solid var(--line);margin-top:10px;padding-top:2px}
+.hcmp{display:grid;gap:6px;margin:6px 0 8px}
+.hcmp>div{border:1px solid var(--line);border-radius:8px;background:var(--soft);padding:6px 9px;display:grid;gap:1px}
+.hcmp .who{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.hcmp .res{font-weight:700}
+.hverdict{font-weight:700;margin:0 0 8px}
+.hcard .row2{margin-top:8px}
+.hsrc{margin-top:10px}
+.hsrc a{color:var(--accent)}
+
 @media (max-width:1100px){
   .grid{grid-template-columns:minmax(0,1fr) minmax(270px,320px)}
   .col-left{grid-column:1 / -1;order:3;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));align-items:start}
@@ -204,6 +231,7 @@ select{background:var(--panel);border:1px solid var(--line);border-radius:7px;pa
   <div class="status" id="status" aria-live="polite"></div>
   <div class="actions">
     <button class="btn" id="btnNew">New game</button>
+    <button class="btn" id="btnHistoric">Historic shots</button>
     <button class="btn" id="btnRandom">Random scenario</button>
     <button class="btn" id="btnUndo">Undo shot</button>
   </div>
@@ -211,6 +239,10 @@ select{background:var(--panel);border:1px solid var(--line);border-radius:7px;pa
 
 <main class="grid">
   <section class="col col-left">
+    <div class="card hcard" id="histCard" hidden>
+      <div class="card-h"><h2>Historic shot</h2><button class="btn small" id="hBrowse">All positions</button></div>
+      <div id="histBody"></div>
+    </div>
     <div class="card">
       <div class="card-h"><h2>Scoreboard</h2><span class="pill" id="modePill"></span></div>
       <div class="sb-wrap"><table class="sb" id="scoreboard"></table></div>
@@ -361,6 +393,14 @@ select{background:var(--panel);border:1px solid var(--line);border-radius:7px;pa
       <button class="btn" id="ngCancel">Cancel</button>
       <button class="btn primary" id="ngStart">Start game</button>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="histModal" hidden>
+  <div class="card wide" role="dialog" aria-modal="true" aria-labelledby="hmTitle">
+    <div class="card-h"><h2 id="hmTitle" style="font-size:24px;color:var(--ink);letter-spacing:0;text-transform:none">Historic shots</h2><button class="btn small" id="hmClose">Close</button></div>
+    <p class="note" style="margin:0">Real positions from championship games. Set the ice, call the shot and throw it, then see what the skip actually called and what the stone did.</p>
+    <div id="histList"></div>
   </div>
 </div>
 
@@ -786,7 +826,7 @@ function stonesLeft(team) {
   const thrown = team === firstTeam() ? Math.ceil(S.shotNo / 2) : Math.floor(S.shotNo / 2);
   return Math.max(0, 8 - thrown);
 }
-const hVal = () => (lastEnd() || S.mode === 'practice' ? 0 : 0.6);
+const hVal = () => (S.puzzle ? (S.puzzle.final ? 0 : 0.6) : lastEnd() || S.mode === 'practice' ? 0 : 0.6);
 const humanTeams = () => (S.mode === 'cpu' ? [1 - S.cpuTeam] : [0, 1]);
 // ---------- review (rewinding the end) ----------
 // S.hist[p] is the game as it stood before the end's (p+1)th logged stone; S.log[p] is that stone.
@@ -971,6 +1011,13 @@ function drawScene(ctx, w, h, scale, pebble, oy = 0) {
   const sc = UI.anim ? null : scoreOf(viewStones());
   drawSweepers(ctx);
   for (const s of live) drawStone(ctx, sx(s.x), sy(s.y), s.team, s.ang || 0, SC);
+  if (UI.ghost && S.puzzle && S.puzzle.revealed && !UI.anim && !UI.review) {
+    const hf = histFind(S.puzzle.id);
+    if (hf) for (const [team, x, y, thrown] of hf.p.pro.after) {
+      drawStone(ctx, sx(x), sy(y), team, 0, SC, 1, true);
+      if (thrown) { ctx.fillStyle = team ? COL.t1 : COL.t0; ctx.beginPath(); ctx.arc(sx(x), sy(y), 3.5, 0, 7); ctx.fill(); }
+    }
+  }
   if (sc && sc.pts) {
     sc.list.slice(0, sc.pts).forEach((e, i) => {
       const x = sx(e.s.x) + R * SC * 0.8, y = sy(e.s.y) - R * SC * 0.8;
@@ -1196,6 +1243,7 @@ function finishAnim() {
   S.log.push({ n: S.shotNo + 1, team, label: res.label, call: `${handle}, ${weightName(A.called.v0).toLowerCase()}${T ? ' (' + T.toFixed(1) + ' s)' : ''}${swept ? ' · ' + swept : ''}`,
     stones: res.stones.map(s => ({ team: s.team, x: s.x, y: s.y })),
     shot: A.shot, ice: { a: ICE.a, K: ICE.K, sweep: ICE.sweep }, sweeps: A.sweeps });
+  if (S.puzzle && !S.puzzle.revealed && A.shotNo === S.puzzle.n - 1) { S.puzzle.revealed = true; histDone(S.puzzle.id); setTimeout(histFocus, 0); }
   S.shotNo++; UI.pick = null;
   let msg = `<b>${TEAM[team]}:</b> ${res.label}${swept ? ` (${swept})` : ''}.`;
   if (res.violation) msg += ' The stones go back where they were and the delivered stone is removed.';
@@ -1250,7 +1298,10 @@ function applySug(c) {
 function showEndBanner() {
   const b = $('#banner'), sc = scoreOf(S.stones);
   let big, sub, btn;
-  if (S.mode === 'practice') {
+  if (S.puzzle) {
+    big = sc.pts ? `${TEAM[sc.team]} scores ${sc.pts}` : 'Blank end';
+    sub = 'Compare it with the real result in the Historic shot card.'; btn = '<button class="btn primary" id="bNext">Next position</button>';
+  } else if (S.mode === 'practice') {
     big = sc.pts ? `${TEAM[sc.team]} would score ${sc.pts}` : 'Blank end';
     sub = 'Practice mode doesn’t keep score.'; btn = '<button class="btn primary" id="bNext">Reset the end</button>';
   } else {
@@ -1260,7 +1311,7 @@ function showEndBanner() {
   }
   b.innerHTML = `<div class="big">${big}</div><div class="note">${sub}</div><div class="row">${btn}<button class="btn" id="bUndo">Undo last shot</button></div>`;
   b.hidden = false;
-  $('#bNext').onclick = nextEnd; $('#bUndo').onclick = undo;
+  $('#bNext').onclick = S.puzzle ? nextHistoric : nextEnd; $('#bUndo').onclick = undo;
 }
 function nextEnd() {
   $('#banner').hidden = true;
@@ -1275,6 +1326,7 @@ function nextEnd() {
       else S.gameOver = true;
     }
   }
+  S.puzzle = null;
   S.stones = []; S.shotNo = 0; S.log = []; S.hist = []; S.endOver = false; UI.sugs = null; UI.markup = []; UI.review = null;
   save(); renderAll();
   if (S.gameOver) {
@@ -1292,14 +1344,14 @@ function undo() {
   let snap = hist.pop();
   S = Object.assign(snap, { hist });
   if (S.mode === 'cpu') while (throwingTeam() === S.cpuTeam && S.hist.length) { const h = S.hist; S = Object.assign(h.pop(), { hist: h }); }
-  $('#banner').hidden = true; UI.sugs = null;
+  $('#banner').hidden = true; UI.sugs = null; UI.ghost = false;
   toast('Shot undone.'); save(); renderAll(); updatePreview();
   if (isCpuTurn()) cpuMove();
 }
 function randomScenario() {
   UI.aiToken++; UI.busy = false; setThinking(''); $('#banner').hidden = true;
   const r = Math.random;
-  S.stones = []; S.log = []; S.hist = []; S.endOver = false; S.sample = false; S.shared = false; UI.markup = []; UI.review = null;
+  S.stones = []; S.log = []; S.hist = []; S.endOver = false; S.sample = false; S.shared = false; S.puzzle = null; UI.markup = []; UI.review = null;
   let k = 6 + Math.floor(r() * 9);
   if (S.mode === 'cpu') { S.shotNo = k; if (throwingTeam() === S.cpuTeam) k = k < 15 ? k + 1 : k - 1; }
   S.shotNo = k;
@@ -1345,13 +1397,111 @@ $('#ngStart').onclick = () => {
 };
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#newModal').hidden = true; });
 
+// ---------- historic shots ----------
+// Positions are generated by tools/build_historic.py from the PCN files in data/; do not edit the block by hand.
+const HISTORIC = /*HISTORIC:START*/[{"id":"og2018-w-bronze","event":"PyeongChang 2018 Olympic Winter Games","stage":"Bronze Medal Game","date":"2018-02-24","site":"Gangneung, South Korea","teams":[{"name":"Great Britain","short":"GBR","players":["GRAY L","ADAMS V","SLOAN A","MUIRHEAD E"]},{"name":"Japan","short":"JPN","players":["YOSHIDA Y","SUZUKI Y","YOSHIDA C","FUJISAWA S"]}],"final":[3,5],"lineScore":[[1,0,1,0,1,0,0,0,0,0],[0,1,0,1,0,0,0,1,1,1]],"nEnds":10,"attribution":"Positions and calls from the PCN conversion of the World Curling / CURLIT Shot by Shot results book (PyeongChang 2018), by Shintaro Inagaki. Stone positions were read from the published diagrams and are accurate to a few centimetres.","source":"https://github.com/shinagaki/pcn","positions":[{"id":"og2018-w-bronze-e1-s12","end":1,"n":12,"team":0,"hammer":0,"scoreIn":[0,0],"title":"Take control of the first end","tag":"Hammer","setup":"Scoreless in the first end. Red has the hammer and throws its sixth stone. Yellow’s only stone in play is lying shot on the right side of the house, 1.55 m from the pin, and Red has a single guard out front on the right.","prompt":"Red wants the shot rock back. What does it take to remove Yellow’s stone and still lie shot?","stones":[[0,1.83,2.93],[1,1.55,-0.06]],"pro":{"thrower":"A. Sloan","task":"Hit and roll","handle":"clockwise handle (curls right)","grade":3,"gradeText":"75%","after":[[0,1.83,2.93],[0,1.09,-0.04,1]],"result":"Red lying 1","notes":"Yellow’s stone was removed and the shooter finished 1.09 m from the pin, leaving Red lying one in the house with a guard still out front."}},{"id":"og2018-w-bronze-e2-s4","end":2,"n":4,"team":1,"hammer":1,"scoreIn":[1,0],"title":"Red sits on the pin","tag":"Early end","setup":"Red leads 1–0 and Yellow has the hammer. Red holds the button (4 cm) with a second stone just in front at 42 cm. Yellow has a lone guard on the left in the guard zone and is throwing its second stone.","prompt":"Two Red stones are stacked up the middle. Can one stone clear them?","stones":[[0,0.03,0.42],[0,-0.02,-0.04],[1,-0.93,2.18]],"pro":{"thrower":"Y. Yoshida","task":"Double take-out","handle":"counter-clockwise handle (curls left)","grade":2,"gradeText":"50%","after":[[0,1.41,-0.62],[1,-0.93,2.18],[1,-0.44,0.5,1]],"result":"Yellow lying 1","notes":"One Red stone was removed and the other rolled out to the right at 1.54 m. Yellow’s shooter stopped at 0.67 m and lay shot, so the pin stone was replaced by a Yellow one."}},{"id":"og2018-w-bronze-e2-s16","end":2,"n":16,"team":1,"hammer":1,"scoreIn":[1,0],"title":"Hammer, down one","tag":"Last stone","setup":"Red leads 1–0 and Yellow has the last stone. Red lies shot at 1.54 m on the right behind the tee line, with two more Red stones around the edge of the house. Yellow has two stones in play, both outside the house.","prompt":"One stone to score. Where does it need to finish?","stones":[[0,1.03,1.7],[0,1.41,-0.62],[0,-2.12,-0.68],[1,-1.08,2.05],[1,-2.156,-1.154]],"pro":{"thrower":"S. Fujisawa","task":"Draw","handle":"clockwise handle (curls right)","grade":4,"gradeText":"100% (made)","after":[[0,1.03,1.7],[0,1.41,-0.62],[0,-2.11,-0.67],[1,-1.08,2.05],[1,-2.16,-1.15],[1,0.45,-1.24,1]],"result":"Yellow scored 1","notes":"A draw to 1.32 m, 22 cm closer than Red’s shot stone. Yellow scored one and levelled the game at 1–1."}},{"id":"og2018-w-bronze-e5-s9","end":5,"n":9,"team":1,"hammer":0,"scoreIn":[2,2],"title":"Red lies shot behind a Yellow guard","tag":"Middle of the end","setup":"Tied 2–2, Red with the hammer. Red’s shot stone sits on the left, 1.59 m from the pin, with a Yellow guard directly in line in front of it at 3.41 m. Yellow throws its fifth stone.","prompt":"Yellow’s own stone is lined up with the shot rock. Can it be put to work?","stones":[[0,1.94,2.72],[0,-1.0,1.23],[0,1.79,-1.59],[1,-1.08,3.41],[1,2.07,-0.48],[1,-1.83,-1.59]],"pro":{"thrower":"C. Yoshida","task":"Promotion take-out","handle":"clockwise handle (curls right)","grade":4,"gradeText":"100% (made)","after":[[0,1.94,2.72],[0,1.79,-1.59],[1,-1.07,3.69,1],[1,-0.99,1.51],[1,2.07,-0.48],[1,-1.83,-1.59]],"result":"Yellow lying 1","notes":"The shooter stopped as a guard at 3.69 m while the Yellow guard was driven 1.9 m down the ice into Red’s shot stone, taking it out and finishing at 1.51 m. Yellow went from nothing in the house to lying shot."}},{"id":"og2018-w-bronze-e5-s16","end":5,"n":16,"team":0,"hammer":0,"scoreIn":[2,2],"title":"Twelve stones, last rock","tag":"Last stone","setup":"Tied 2–2 in a packed house. Yellow lies shot at 0.77 m, Red is second at 0.84 m, then Yellow at 0.98 m and Red at 1.13 m. Red has the last stone.","prompt":"Red needs to climb over Yellow’s shot stone without giving up the rest of the house.","stones":[[0,1.94,2.72],[0,-0.81,-0.23],[0,-0.93,-0.64],[0,1.86,-1.3],[0,1.74,-1.7],[1,-1.08,3.69],[1,-1.08,1.47],[1,-0.7,0.32],[1,2.07,-0.48],[1,-0.62,-0.76],[1,-1.83,-1.59]],"pro":{"thrower":"E. Muirhead","task":"Raise / tap back","handle":"counter-clockwise handle (curls left)","grade":2,"gradeText":"50%","after":[[0,1.94,2.72],[0,-0.778,-0.347],[0,-0.93,-0.642],[0,1.86,-1.3],[0,1.74,-1.7],[1,-1.08,3.69],[1,-1.08,1.47],[1,-0.81,0.049],[1,2.07,-0.48],[1,-0.62,-0.76],[1,-1.83,-1.59],[0,-0.365,0.491,1]],"result":"Red scored 1","notes":"Yellow’s shot stone was nudged back and Red’s shooter finished at 0.61 m, lying shot. Yellow’s next stone was 0.81 m away, so Red scored one and led 3–2."}},{"id":"og2018-w-bronze-e7-s16","end":7,"n":16,"team":1,"hammer":1,"scoreIn":[3,2],"title":"Score one or keep the hammer?","tag":"Last stone","setup":"Red leads 3–2 with three ends still to play and Yellow has the last stone. Red lies shot at 1.80 m on the right behind the tee line, Yellow is second at 2.07 m, and there is a Red guard outside the house.","prompt":"Yellow could draw in to score one and tie, or try to leave nothing in the house. What do you call?","stones":[[0,2.06,2.26],[0,1.58,-0.86],[1,1.71,-1.17]],"pro":{"thrower":"S. Fujisawa","task":"Clearing","handle":"counter-clockwise handle (curls left)","grade":4,"gradeText":"100% (made)","after":[[0,2.06,2.26]],"result":"Blank end, no score","notes":"Yellow cleared both house stones, leaving only the Red guard, which does not count. The end was blanked and Yellow kept the hammer for the eighth, where it scored one."}},{"id":"og2018-w-bronze-e8-s16","end":8,"n":16,"team":1,"hammer":1,"scoreIn":[3,2],"title":"A guard in the way","tag":"Last stone","setup":"Red leads 3–2 and Yellow has the last stone. Three Red stones sit around the back and sides of the house. Yellow has a guard on the front edge of the house just right of the centre line and another at 3.70 m on the left, with the button open behind them.","prompt":"Yellow needs one to tie. The button is open but the guard is in the way. What are the options?","stones":[[0,1.78,-0.66],[0,2.14,-1.67],[0,-0.71,-1.75],[1,-1.01,3.7],[1,0.21,1.94]],"pro":{"thrower":"S. Fujisawa","task":"Wick / soft peel","handle":"clockwise handle (curls right)","grade":2,"gradeText":"50%","after":[[0,1.78,-0.66],[0,2.14,-1.67],[0,-0.71,-1.75],[1,-1.01,3.7],[1,0.19,2.23,1],[1,0.35,0.18]],"result":"Yellow scored 1","notes":"The shooter came to rest as a guard at 2.23 m and drove Yellow’s front guard back to 0.39 m from the pin. Red’s nearest stone was 1.89 m away, so Yellow scored one and tied at 3–3."}},{"id":"og2018-w-bronze-e9-s16","end":9,"n":16,"team":0,"hammer":0,"scoreIn":[3,3],"title":"Tied, last stone, no shot rock","tag":"Last stone","setup":"Tied 3–3 in the ninth end. Red has the hammer but nothing in the house. Yellow lies shot at 1.15 m on the left, with two Red guards in front of the house, 3.5 m and 5.5 m from the tee line.","prompt":"If Red does nothing, Yellow steals. What is Red’s best way to deal with Yellow’s stone?","stones":[[0,0.6,5.46],[0,-0.45,3.53],[1,-0.48,1.05]],"pro":{"thrower":"E. Muirhead","task":"Promotion take-out","handle":"clockwise handle (curls right)","grade":0,"gradeText":"0% (missed)","after":[[0,0.6,5.46],[0,-0.27,3.74,1],[1,-0.49,1.04]],"result":"Yellow scored 1","notes":"The shot missed: Yellow’s stone did not move, and Red’s guards ended at 3.74 m and 5.46 m. Yellow stole one and led 4–3 going into the last end."}},{"id":"og2018-w-bronze-e10-s12","end":10,"n":12,"team":0,"hammer":0,"scoreIn":[3,4],"title":"Red needs the shot rock","tag":"Final end","setup":"Final end, Red trails 3–4 and has the hammer. Yellow lies shot at 0.97 m and has a guard on the centre line at 3.96 m, with a Red guard on the left at 3.17 m. Red throws its sixth stone.","prompt":"Yellow’s guard blocks the middle. How do you get on top of the shot rock?","stones":[[0,-1.38,3.17],[0,-1.48,-1.44],[1,0.21,3.95],[1,0.16,0.96],[1,1.24,-1.27],[1,1.27,-1.94]],"pro":{"thrower":"A. Sloan","task":"Draw","handle":"counter-clockwise handle (curls left)","grade":3,"gradeText":"75%","after":[[0,-1.38,3.17],[0,0.39,-0.18,1],[0,-1.48,-1.44],[1,0.21,3.96],[1,0.16,0.96],[1,1.24,-1.27],[1,1.27,-1.94]],"result":"Red lying 1","notes":"A draw to 0.43 m, behind the Yellow guard, taking shot rock from Yellow’s 0.97 m."}},{"id":"og2018-w-bronze-e10-s16","end":10,"n":16,"team":0,"hammer":0,"scoreIn":[3,4],"title":"The last stone of the bronze medal game","tag":"Final end","setup":"Final end, Red trails 3–4 and has the last stone. Red lies shot at 0.47 m, but Yellow holds the next two at 0.54 m and 0.56 m, with Red fourth at 0.68 m. One point ties the game and sends it to an extra end, two win it.","prompt":"Red is counting one right now. What do you call to get a second point?","stones":[[0,-1.38,3.17],[0,0.31,0.35],[0,0.21,-0.65],[0,-1.48,-1.44],[1,0.21,3.96],[1,0.16,0.95],[1,-0.1,0.55],[1,0.531,0.112],[1,1.24,-1.27],[1,1.27,-1.94]],"pro":{"thrower":"E. Muirhead","task":"Double take-out","handle":"clockwise handle (curls right)","grade":0,"gradeText":"0% (missed)","after":[[0,-1.38,3.17],[0,0.605,0.372],[0,0.21,-0.65],[1,0.21,3.96],[1,0.16,0.95],[1,-0.126,-0.167],[1,1.822,-0.848],[1,1.24,-1.27],[1,1.27,-1.94]],"result":"Yellow scored 1","notes":"The shot missed. Yellow ended up lying shot at 0.21 m with Red’s nearest stone at 0.68 m, and Yellow stole one to win 5–3."}}]}]/*HISTORIC:END*/;
+const HKEY = 'housecall.historic.v1';
+let HDONE = {};
+try { HDONE = JSON.parse(localStorage.getItem(HKEY) || '{}') || {}; } catch (e) {}
+function histFind(id) {
+  for (const g of HISTORIC) { const p = g.positions.find(p => p.id === id); if (p) return { g, p }; }
+  return null;
+}
+function histDone(id) { HDONE[id] = 1; try { localStorage.setItem(HKEY, JSON.stringify(HDONE)); } catch (e) {} }
+const histOrder = () => HISTORIC.flatMap(g => g.positions.map(p => p.id));
+function loadHistoric(id) {
+  const f = histFind(id); if (!f) return;
+  const { g, p } = f;
+  UI.aiToken++; UI.busy = false; setThinking(''); $('#banner').hidden = true; $('#histModal').hidden = true;
+  S = newState({ mode: 'practice', hammer: p.hammer, nEnds: g.nEnds });
+  S.end = p.end - 1; S.shotNo = p.n - 1;
+  for (let i = 0; i < p.end - 1; i++) { S.scores[0][i] = g.lineScore[0][i]; S.scores[1][i] = g.lineScore[1][i]; }
+  S.stones = p.stones.map(([team, x, y]) => ({ id: S.nextId++, team, x, y, ang: Math.random() * 6 }));
+  S.puzzle = { id, n: p.n, final: p.end >= g.nEnds, revealed: false };
+  UI.sugs = null; UI.markup = []; UI.pick = null; UI.ghost = false; UI.preview = null; UI.hover = null; UI.review = null;
+  UI.broom = { x: 0, y: 0 }; UI.spin = 1;
+  toast(`<b>${TEAM[p.team]}</b> throws stone ${p.n}. Call the shot.`);
+  save(); renderAll(); updatePreview();
+}
+function histFocus() { if (matchMedia('(max-width:1100px)').matches) $('#histCard').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+function nextHistoric() {
+  const ids = histOrder(), i = S.puzzle ? ids.indexOf(S.puzzle.id) : -1;
+  loadHistoric(ids[(i + 1) % ids.length]);
+}
+function openHistoric() {
+  let h = '';
+  for (const g of HISTORIC) {
+    h += `<div class="hgame"><div class="hgh"><b>${g.event}</b><span>${g.stage} · ${g.teams[0].name} ${g.final[0]}–${g.final[1]} ${g.teams[1].name} · ${g.date}</span><span>${g.attribution}</span></div><div class="hgrid">`;
+    for (const p of g.positions) {
+      h += `<button class="hpos" data-id="${p.id}"><canvas data-id="${p.id}"></canvas><span class="ht"><b>${p.title}</b><small>End ${p.end} · stone ${p.n} · ${TEAM[p.team]}${p.hammer === p.team ? ' (hammer)' : ''} · Red ${p.scoreIn[0]}–${p.scoreIn[1]} Yellow</small><span class="pills"><span class="pill">${p.tag}</span>${HDONE[p.id] ? '<span class="pill ok">Played</span>' : ''}</span></span></button>`;
+    }
+    h += '</div></div>';
+  }
+  const el = $('#histList'); el.innerHTML = h || '<p class="note">No positions loaded.</p>';
+  el.querySelectorAll('canvas').forEach(cv => drawThumb(cv, histFind(cv.dataset.id).p.stones.map(([team, x, y]) => ({ team, x, y }))));
+  $('#histModal').hidden = false; (el.querySelector('.hpos') || $('#hmClose')).focus();
+}
+function gameAfter(stones, p) { // totals after the last stone of the final end
+  const sc = scoreOf(stones), t = [p.scoreIn[0], p.scoreIn[1]];
+  if (sc.pts) t[sc.team] += sc.pts;
+  return t;
+}
+const gameText = t => t[0] === t[1] ? `tied ${t[0]}–${t[1]}, extra end` : `${TEAM[t[0] > t[1] ? 0 : 1]} wins ${Math.max(...t)}–${Math.min(...t)}`;
+const gameRank = (t, team) => t[team] > t[1 - team] ? 2 : t[team] === t[1 - team] ? 1 : 0;
+const countText = (stones, final) => {
+  const sc = scoreOf(stones);
+  if (!sc.pts) return final ? 'Blank end' : 'Nobody in the house';
+  return final ? `${TEAM[sc.team]} scores ${sc.pts}` : `${TEAM[sc.team]} lying ${sc.pts}`;
+};
+function renderHist() {
+  const card = $('#histCard'), f = S.puzzle && histFind(S.puzzle.id);
+  card.hidden = !f; if (!f) return;
+  const { g, p } = f, pro = p.pro, me = S.log.find(l => l.n === p.n), final = p.n === 16;
+  let h = `<div class="hh">${p.title}</div>
+    <div class="hmeta">${g.event}, ${g.stage}<br>End ${p.end} · stone ${p.n} of 16 · <span class="chip t${p.team}" style="margin-right:3px"></span>${TEAM[p.team]} (${g.teams[p.team].short}, ${pro.thrower}) ${p.hammer === p.team ? 'with' : 'without'} the hammer<br>Score entering the end: Red ${p.scoreIn[0]}, Yellow ${p.scoreIn[1]}</div>
+    <p>${p.setup}</p>`;
+  if (!S.puzzle.revealed) {
+    h += `<p class="hprompt">${p.prompt}</p><p class="note">Throw it yourself, or reveal the real call. <b>Suggest a shot</b> counts points in this end only and doesn’t know the score.</p>
+      <div class="row2"><button class="btn small" id="hReveal">Reveal the call</button><button class="btn small" id="hReset">Reset position</button></div>`;
+  } else {
+    const proStones = pro.after.map(([team, x, y]) => ({ team, x, y }));
+    h += `<div class="hpro"><div class="label">The call</div><p><b>${pro.task}</b>, ${pro.handle}</p>
+      <div class="label">How it was graded</div><p>${pro.gradeText} on World Curling’s 0–4 execution scale</p>
+      <div class="label">What happened</div><p>${pro.notes}</p>`;
+    if (me) {
+      const yS = scoreOf(me.stones), pS = scoreOf(proStones), decider = final && f.g.nEnds === p.end;
+      const sg = sc => !sc.pts ? 0 : (sc.team === p.team ? sc.pts : -sc.pts);
+      const yG = decider && gameAfter(me.stones, p), pG = decider && gameAfter(proStones, p);
+      const d = decider && gameRank(yG, p.team) !== gameRank(pG, p.team) ? gameRank(yG, p.team) - gameRank(pG, p.team) : sg(yS) - sg(pS);
+      const unit = decider && gameRank(yG, p.team) !== gameRank(pG, p.team) ? ['', ''] : [d > 0 ? d : -d, Math.abs(d) === 1 ? 'point' : 'points'];
+      const row = (who, call, sub, stones, tot) => `<div><span class="who">${who}</span><span>${call}</span><span class="note" style="margin:0">${sub}</span><span class="res">${countText(stones, final)}${tot ? ` · ${gameText(tot)}` : ''}</span></div>`;
+      h += `<div class="label">${final ? 'End result' : 'Count after the stone'}</div><div class="hcmp">${row('You', me.label, me.call, me.stones, yG)}${row('Real call', pro.task, pro.handle, proStones, pG)}</div>
+        <p class="hverdict">${!d ? 'You matched the real result.' : unit[0] === '' ? (d > 0 ? 'You got a better game result than the real shot.' : 'The real shot got the better game result.') : d > 0 ? `You finished ${unit[0]} ${unit[1]} ahead of the real shot on the board.` : `You finished ${unit[0]} ${unit[1]} behind the real shot on the board.`}</p>${decider ? '' : '<p class="note">Points on the board aren’t the whole story: the hammer, the score and the ends left all matter.</p>'}`;
+    }
+    h += `</div><div class="row2"><button class="btn small ${UI.ghost ? 'primary' : ''}" id="hGhost">${UI.ghost ? 'Hide' : 'Show'} the real result on the ice</button><button class="btn small" id="hReset">Try again</button><button class="btn small primary" id="hNext">Next position</button></div>`;
+  }
+  h += `<p class="note hsrc">Source: World Curling / CURLIT Shot by Shot, via <a href="${g.source}" target="_blank" rel="noopener">PCN</a>.</p>`;
+  $('#histBody').innerHTML = h;
+  const on = (id, fn) => { const b = $(id); if (b) b.onclick = fn; };
+  on('#hReveal', () => { if (UI.anim) return; S.puzzle.revealed = true; histDone(S.puzzle.id); UI.ghost = true; save(); renderAll(); histFocus(); });
+  on('#hReset', () => { if (!UI.anim) loadHistoric(S.puzzle.id); });
+  on('#hNext', () => { if (!UI.anim) nextHistoric(); });
+  on('#hGhost', () => { UI.ghost = !UI.ghost; renderHist(); draw(); });
+}
+$('#btnHistoric').onclick = openHistoric;
+$('#hBrowse').onclick = openHistoric;
+$('#hmClose').onclick = () => { $('#histModal').hidden = true; };
+$('#histModal').addEventListener('click', e => { if (e.target === $('#histModal')) $('#histModal').hidden = true; });
+$('#histList').addEventListener('click', e => { const b = e.target.closest('.hpos'); if (b) loadHistoric(b.dataset.id); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#histModal').hidden = true; });
+
 // ---------- rendering panels ----------
 function toast(h) { $('#toast').innerHTML = h; }
 function renderStatus() {
   const team = throwingTeam();
-  const modeName = { cpu: 'vs computer', friend: 'vs a friend', practice: 'Practice' }[S.mode];
+  const modeName = S.puzzle ? 'Historic shot' : { cpu: 'vs computer', friend: 'vs a friend', practice: 'Practice' }[S.mode];
   let h = '';
-  if (S.mode !== 'practice') h += `<span class="mini-score"><span class="chip t0"></span>${totals(0)}<span style="color:var(--muted)">–</span>${totals(1)}<span class="chip t1" style="margin:0 0 0 6px"></span></span>`;
+  if (S.mode !== 'practice' || S.puzzle) h += `<span class="mini-score"><span class="chip t0"></span>${totals(0)}<span style="color:var(--muted)">–</span>${totals(1)}<span class="chip t1" style="margin:0 0 0 6px"></span></span>`;
   if (S.gameOver) h += `<span><b>Final</b></span>`;
   else h += `<span>End <b>${S.end + 1}</b>${S.mode === 'practice' ? '' : ' of ' + S.nEnds} · Stone <b>${Math.min(16, S.shotNo + 1)}</b> of 16 · ${S.endOver ? 'End complete' : `<b>${TEAM[team]}</b> to throw`}</span>`;
   h += `<span>${modeName}${S.sample ? ' · sample position' : S.shared ? ' · shared position' : ''}</span>`;
@@ -1360,11 +1510,12 @@ function renderStatus() {
   $('#modePill').textContent = modeName;
 }
 function renderScoreboard() {
+  const hf = S.puzzle && histFind(S.puzzle.id);
   const n = S.nEnds; let h = '<thead><tr><th class="tn">Team</th>';
   for (let i = 0; i < n; i++) h += `<th class="${i === S.end && !S.gameOver ? 'cur' : ''}">${i + 1}</th>`;
   h += '<th>T</th></tr></thead><tbody>';
   for (const t of [0, 1]) {
-    h += `<tr><th class="tn"><span class="chip t${t}"></span>${TEAM[t]}${S.hammer === t && !S.gameOver ? hammerSvg : ''}${S.mode === 'cpu' ? `<span style="color:var(--muted);font-weight:500"> ${t === S.cpuTeam ? '(CPU)' : '(you)'}</span>` : ''}</th>`;
+    h += `<tr><th class="tn"><span class="chip t${t}"></span>${TEAM[t]}${hf ? ` <span style="color:var(--muted);font-weight:500">${hf.g.teams[t].short}</span>` : ''}${S.hammer === t && !S.gameOver ? hammerSvg : ''}${S.mode === 'cpu' ? `<span style="color:var(--muted);font-weight:500"> ${t === S.cpuTeam ? '(CPU)' : '(you)'}</span>` : ''}</th>`;
     for (let i = 0; i < n; i++) h += `<td class="${i === S.end && !S.gameOver ? 'cur' : ''}">${S.scores[t][i] ?? ''}</td>`;
     h += `<td class="tot">${totals(t)}</td></tr>`;
   }
@@ -1499,7 +1650,7 @@ function renderReviewBar() {
   rs.classList.toggle('danger', !!rv.confirm);
   $('#rvExit').disabled = busy;
 }
-function renderAll() { renderStatus(); renderScoreboard(); renderRead(); renderSugs(); renderHistory(); renderControls(); renderReviewBar(); renderDial(); renderBroomRead(); draw(); }
+function renderAll() { renderStatus(); renderHist(); renderScoreboard(); renderRead(); renderSugs(); renderHistory(); renderControls(); renderReviewBar(); renderDial(); renderBroomRead(); draw(); }
 
 // ---------- review actions ----------
 function enterReview(p) {
@@ -1695,7 +1846,7 @@ $('#youLvl').onchange = e => { UI.set.you = e.target.value; save(); };
 $('#cpuLvl').onchange = e => { UI.set.cpu = e.target.value; save(); };
 $('#playback').onchange = e => { UI.set.playback = e.target.value; save(); };
 document.addEventListener('keydown', e => {
-  if (e.target.matches?.('input,select,textarea') || !$('#newModal').hidden) return;
+  if (e.target.matches?.('input,select,textarea') || !$('#newModal').hidden || !$('#histModal').hidden) return;
   if (e.key === 't' || e.key === 'T') { if (!controlsLocked()) doThrow(false); }
   else if (e.key === 'u' || e.key === 'U') undo();
   else if (UI.review && !UI.anim && e.target.closest?.('#dial') == null && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
