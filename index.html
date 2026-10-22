@@ -1,0 +1,1371 @@
+<title>House Call</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Saira+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Layout: rink console — score & analysis | the sheet | the skip's call. Stacks to one column on phones. */
+:root{
+  --bg:#e8eff3; --panel:#ffffff; --soft:#f1f6f9; --ink:#122130; --muted:#586a78; --line:#d3dee6;
+  --accent:#1d5ea8; --accent-ink:#ffffff; --accent-soft:#dce9f7;
+  --red:#cf3339; --yellow:#e5b21c; --red-ink:#ffffff; --yellow-ink:#2b2100;
+  --good:#22815a; --warn:#b5571a;
+  --ice:#f6fafc; --pebble:rgba(110,140,165,.13); --ring-blue:#2a63ad; --ring-red:#cf3a3a; --ring-white:#fbfdfe;
+  --mark:#24333f; --fgz:rgba(29,94,168,.07); --pen:#ff7417;
+  --z-guard:#9fb2c1; --z-house:#2a63ad; --z-board:#d7a21f; --z-hit:#cf3a3a;
+  --f-display:"Saira Condensed","Arial Narrow",sans-serif;
+  --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --radius:10px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0c141b; --panel:#141f29; --soft:#1a2733; --ink:#e4edf3; --muted:#90a3b1; --line:#253645;
+  --accent:#5d9de3; --accent-ink:#06121e; --accent-soft:#1b3350;
+  --red:#e0484e; --yellow:#efc23a; --red-ink:#ffffff; --yellow-ink:#2b2100;
+  --good:#45b383; --warn:#e08a4a;
+  --ice:#dfe8ee; --pebble:rgba(90,120,145,.16); --ring-blue:#2d62a8; --ring-red:#c63a3a; --ring-white:#eef3f6;
+  --mark:#22313d; --fgz:rgba(29,94,168,.09); --pen:#ff7a1f;
+  --z-guard:#5d7282; --z-house:#4d8fda; --z-board:#d9a92c; --z-hit:#e0484e;
+  color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0c141b; --panel:#141f29; --soft:#1a2733; --ink:#e4edf3; --muted:#90a3b1; --line:#253645;
+  --accent:#5d9de3; --accent-ink:#06121e; --accent-soft:#1b3350;
+  --red:#e0484e; --yellow:#efc23a; --red-ink:#ffffff; --yellow-ink:#2b2100;
+  --good:#45b383; --warn:#e08a4a;
+  --ice:#dfe8ee; --pebble:rgba(90,120,145,.16); --ring-blue:#2d62a8; --ring-red:#c63a3a; --ring-white:#eef3f6;
+  --mark:#22313d; --fgz:rgba(29,94,168,.09); --pen:#ff7a1f;
+  --z-guard:#5d7282; --z-house:#4d8fda; --z-board:#d9a92c; --z-hit:#e0484e;
+  color-scheme:dark }
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:12px 16px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:26px;letter-spacing:.02em;margin:0;line-height:1;text-transform:uppercase}
+.brand svg{width:30px;height:30px;flex:none}
+.status{flex:1 1 280px;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;color:var(--muted)}
+.status b{color:var(--ink);font-weight:700}
+.mini-score{font-family:var(--f-display);font-size:20px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:6px}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;font-weight:700;font-size:13px;display:inline-flex;align-items:center;gap:6px;line-height:1.1}
+.btn:hover{border-color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed;border-color:var(--line)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.small{padding:5px 9px;font-size:12px}
+
+.grid{display:grid;grid-template-columns:minmax(250px,310px) minmax(0,1fr) minmax(270px,320px);gap:16px;padding:0 16px 20px;align-items:start}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;min-width:0}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 10px}
+.card-h h2{font-family:var(--f-display);font-weight:600;font-size:15px;letter-spacing:.08em;text-transform:uppercase;margin:0;color:var(--muted)}
+.label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:12px 0 6px}
+.label:first-child{margin-top:0}
+.note{color:var(--muted);font-size:12.5px;margin:6px 0 0}
+
+/* scoreboard */
+.sb-wrap{overflow-x:auto}
+.sb{border-collapse:collapse;width:100%;font-family:var(--f-display);font-variant-numeric:tabular-nums;font-size:16px}
+.sb th,.sb td{border:1px solid var(--line);text-align:center;padding:3px 0;min-width:18px}
+.sb thead th{font-size:12px;color:var(--muted);font-weight:600;background:var(--soft)}
+.sb thead th.cur{background:var(--accent-soft);color:var(--ink)}
+.sb th.tn{text-align:left;padding:3px 6px;font-weight:600;white-space:nowrap}
+.sb td.tot{font-weight:700;background:var(--soft)}
+.sb td.cur{background:var(--accent-soft)}
+.chip{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:0}
+.chip.t0{background:var(--red)} .chip.t1{background:var(--yellow)}
+.hammer{display:inline-flex;vertical-align:-2px;margin-left:5px;color:var(--ink)}
+.rocks{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;margin-top:10px;font-size:13px}
+.dots{display:flex;gap:4px;flex-wrap:wrap}
+.dot{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--line)}
+.dot.on.t0{background:var(--red);border-color:var(--red)}
+.dot.on.t1{background:var(--yellow);border-color:var(--yellow)}
+
+/* analysis */
+.read{display:grid;gap:6px}
+.read .big{font-family:var(--f-display);font-size:22px;font-weight:600;line-height:1.1}
+.meas{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:3px;font-variant-numeric:tabular-nums;font-size:13px}
+.meas li{display:grid;grid-template-columns:22px 1fr auto;gap:6px;align-items:center}
+.meas .rk{font-family:var(--f-display);font-weight:700;color:var(--muted)}
+.meas .cnt{font-weight:700}
+.pill{display:inline-block;border-radius:999px;padding:2px 8px;font-size:11.5px;font-weight:700;background:var(--soft);border:1px solid var(--line)}
+.pill.fgz{background:var(--accent-soft);border-color:transparent}
+.sugs{display:grid;gap:8px;margin-top:10px}
+.sug{display:grid;grid-template-columns:26px 1fr auto;gap:4px 8px;text-align:left;border:1px solid var(--line);background:var(--soft);border-radius:8px;padding:8px 10px;width:100%}
+.sug:hover,.sug:focus-visible{border-color:var(--accent)}
+.sug .n{font-family:var(--f-display);font-size:22px;font-weight:700;line-height:1;color:var(--accent);grid-row:span 2}
+.sug .t{font-weight:700}
+.sug .v{font-family:var(--f-display);font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+.sug .d{grid-column:2 / 4;color:var(--muted);font-size:12.5px}
+.sug .tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pill.diff{border-color:transparent;color:var(--panel)}
+.pill.diff.easy{background:var(--good)} .pill.diff.mod{background:var(--accent)}
+.pill.diff.hard{background:var(--warn)} .pill.diff.vhard{background:var(--red)}
+.progress{height:5px;border-radius:3px;background:var(--soft);overflow:hidden;margin-top:10px}
+.progress i{display:block;height:100%;width:0;background:var(--accent);transition:width .1s}
+
+/* history */
+.hist{list-style:none;margin:0;padding:0;display:grid;gap:8px;max-height:340px;overflow-y:auto}
+.hist li{display:grid;grid-template-columns:56px 1fr;gap:10px;align-items:center;font-size:13px}
+.hist canvas{width:56px;height:56px;border-radius:50%}
+.hist .who{font-weight:700}
+.hist .sub{color:var(--muted);font-size:12px}
+.empty{color:var(--muted);font-size:13px}
+.hist li.empty{display:block}
+
+/* sheet */
+.sheet-col{display:flex;flex-direction:column;gap:10px;align-items:center;min-width:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel)}
+.seg button{border:0;background:transparent;padding:6px 10px;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.seg button:disabled{opacity:.45;cursor:not-allowed}
+.sheet{display:flex;gap:10px;align-items:flex-start;max-width:100%}
+.mainwrap{position:relative;border-radius:4px;overflow:hidden;box-shadow:0 0 0 1px var(--line),0 6px 24px rgba(10,30,50,.10)}
+#main{display:block;touch-action:none;cursor:crosshair}
+#mini{display:block;border-radius:3px;box-shadow:0 0 0 1px var(--line)}
+.banner{position:absolute;inset:auto 12px 12px 12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;display:grid;gap:8px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.banner .big{font-family:var(--f-display);font-weight:700;font-size:26px;line-height:1.05}
+.banner .row{display:flex;gap:8px;flex-wrap:wrap}
+.sweep{min-width:min(320px,100%);justify-content:center;padding:12px 18px;font-size:15px;user-select:none;-webkit-user-select:none;touch-action:none}
+.sweep kbd{font:600 11px var(--f-body);border:1px solid currentColor;border-radius:4px;padding:1px 5px;opacity:.7}
+.sweep[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.toast{min-height:22px;text-align:center;font-size:13.5px;color:var(--muted);max-width:420px}
+.toast b{color:var(--ink)}
+.thinking{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:700;white-space:nowrap}
+
+/* shot card */
+.who-throws{display:flex;align-items:center;gap:8px}
+.dialbox{display:grid;justify-items:center;gap:4px}
+#dial{width:100%;max-width:280px;touch-action:none;cursor:grab;display:block}
+#dial .track{fill:none;stroke:var(--soft);stroke-width:16}
+#dial .zone{fill:none;stroke-width:16;opacity:.85}
+#dial .z-guard{stroke:var(--z-guard)} #dial .z-house{stroke:var(--z-house)} #dial .z-board{stroke:var(--z-board)} #dial .z-hit{stroke:var(--z-hit)}
+#dial .tick-l{font-family:var(--f-display);font-size:11.5px;font-weight:600;fill:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+#dial .knob{fill:var(--panel);stroke:var(--ink);stroke-width:3}
+#dial .num{font-family:var(--f-display);font-weight:700;font-size:40px;fill:var(--ink);font-variant-numeric:tabular-nums}
+#dial .zl{font-family:var(--f-display);font-weight:600;font-size:17px;fill:var(--accent);letter-spacing:.04em;text-transform:uppercase}
+#dial .cap{font-size:11px;fill:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.steppers{display:flex;gap:8px;align-items:center}
+.wdesc{font-size:12.5px;color:var(--muted);text-align:center;min-height:18px}
+.row2{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.check{display:flex;gap:8px;align-items:center;font-size:13px}
+.throw{width:100%;margin-top:14px;justify-content:center;padding:11px;font-size:15px}
+.field{display:grid;gap:4px;margin-top:10px}
+.field label{font-size:12.5px;display:flex;justify-content:space-between;gap:8px}
+.field label span{color:var(--muted);font-variant-numeric:tabular-nums}
+.field input[type=range]{width:100%;accent-color:var(--accent)}
+select{background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:5px 8px;width:100%}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(5,15,25,.45);display:grid;place-items:center;padding:16px;z-index:10}
+.modal .card{width:min(440px,100%);max-height:100%;overflow:auto;padding:18px}
+.modal h2{font-family:var(--f-display);font-size:24px;margin:0 0 4px}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.opt{border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--soft);text-align:left;font-weight:700;font-size:13px}
+.opt small{display:block;font-weight:400;color:var(--muted);font-size:11.5px;margin-top:2px}
+.opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+
+@media (max-width:1100px){
+  .grid{grid-template-columns:minmax(0,1fr) minmax(270px,320px)}
+  .col-left{grid-column:1 / -1;order:3;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));align-items:start}
+}
+@media (max-width:720px){
+  .grid{grid-template-columns:minmax(0,1fr)}
+  .col-right{order:2}
+  .brand h1{font-size:22px}
+}
+@media (prefers-reduced-motion:reduce){ .progress i{transition:none} }
+</style>
+
+<header class="top">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="var(--ring-blue)"/><circle cx="16" cy="16" r="10" fill="var(--ring-white)"/><circle cx="16" cy="16" r="5" fill="var(--ring-red)"/><circle cx="16" cy="16" r="1.6" fill="var(--ring-white)"/></svg>
+    <h1>House Call</h1>
+  </div>
+  <div class="status" id="status" aria-live="polite"></div>
+  <div class="actions">
+    <button class="btn" id="btnNew">New game</button>
+    <button class="btn" id="btnRandom">Random scenario</button>
+    <button class="btn" id="btnUndo">Undo shot</button>
+  </div>
+</header>
+
+<main class="grid">
+  <section class="col col-left">
+    <div class="card">
+      <div class="card-h"><h2>Scoreboard</h2><span class="pill" id="modePill"></span></div>
+      <div class="sb-wrap"><table class="sb" id="scoreboard"></table></div>
+      <div class="rocks" id="rocksLeft"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>Analysis</h2><button class="btn small primary" id="btnSuggest">Suggest a shot</button></div>
+      <div class="read" id="read"></div>
+      <div id="sugArea"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>This end</h2></div>
+      <ol class="hist" id="history"></ol>
+    </div>
+  </section>
+
+  <section class="sheet-col">
+    <div class="toolbar" role="toolbar" aria-label="Sheet tools">
+      <div class="seg" id="tools">
+        <button data-tool="broom" aria-pressed="true" title="Place the broom to call the ice">Broom</button>
+        <button data-tool="move" aria-pressed="false" title="Drag stones">Move</button>
+        <button data-tool="add0" aria-pressed="false" title="Add a red stone"><span class="chip t0"></span>Add</button>
+        <button data-tool="add1" aria-pressed="false" title="Add a yellow stone"><span class="chip t1"></span>Add</button>
+        <button data-tool="erase" aria-pressed="false" title="Remove a stone">Remove</button>
+        <button data-tool="pen" aria-pressed="false" title="Draw on the sheet">Draw</button>
+      </div>
+      <div class="seg">
+        <button id="btnClearPen" title="Clear drawings">Clear drawing</button>
+        <button id="btnClearStones" title="Remove every stone">Clear sheet</button>
+      </div>
+    </div>
+    <div class="sheet" id="sheetWrap">
+      <canvas id="mini" aria-label="Full sheet overview"></canvas>
+      <div class="mainwrap" id="mainwrap">
+        <canvas id="main" aria-label="Top-down view of the house. Click to place the broom."></canvas>
+        <div class="thinking" id="thinking" hidden></div>
+        <div class="banner" id="banner" hidden></div>
+      </div>
+    </div>
+    <button class="btn sweep" id="btnSweep" disabled aria-pressed="false">
+      <svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><rect x="1" y="2" width="20" height="8" rx="4" fill="currentColor"/></svg>
+      <span id="sweepLbl">Hold to sweep</span><kbd>Space</kbd></button>
+    <div class="toast" id="toast" aria-live="polite"></div>
+  </section>
+
+  <section class="col col-right">
+    <div class="card">
+      <div class="card-h"><h2>Call the shot</h2><span class="who-throws" id="whoThrows"></span></div>
+      <div class="seg" id="pickTeam" hidden>
+        <button data-team="0" aria-pressed="true"><span class="chip t0"></span>Red</button>
+        <button data-team="1" aria-pressed="false"><span class="chip t1"></span>Yellow</button>
+      </div>
+      <div class="label">Weight</div>
+      <div class="dialbox">
+        <svg id="dial" viewBox="-20 0 280 200" role="slider" tabindex="0" aria-label="Weight" aria-valuemin="0" aria-valuemax="100"></svg>
+        <div class="steppers">
+          <button class="btn small" id="wMinus" title="Lighter (+0.1 s)">− Lighter</button>
+          <button class="btn small" id="wPlus" title="Heavier (−0.1 s)">Heavier +</button>
+        </div>
+        <div class="wdesc" id="wdesc"></div>
+      </div>
+      <div class="label">Handle</div>
+      <div class="seg" id="handle">
+        <button data-spin="1" aria-pressed="true" title="Clockwise rotation: curls right">
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 15.5C5 9 6 5.5 10.5 3.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M13.8 2.2L11.4 5.6L9.6 1.6z" fill="currentColor"/></svg>In-turn</button>
+        <button data-spin="-1" aria-pressed="false" title="Counter-clockwise rotation: curls left">
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M11 15.5C11 9 10 5.5 5.5 3.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M2.2 2.2L4.6 5.6L6.4 1.6z" fill="currentColor"/></svg>Out-turn</button>
+      </div>
+      <div class="note" id="broomRead"></div>
+      <label class="check" style="margin-top:10px"><input type="checkbox" id="showPath"> Show predicted path</label>
+      <button class="btn primary throw" id="btnThrow">Throw</button>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>Ice & players</h2></div>
+      <div class="field">
+        <label for="iceSpeed">Ice speed (draw to tee) <span id="iceSpeedV"></span></label>
+        <input type="range" id="iceSpeed" min="12.5" max="17.5" step="0.1">
+      </div>
+      <div class="field">
+        <label for="iceCurl">Curl on a draw <span id="iceCurlV"></span></label>
+        <input type="range" id="iceCurl" min="0.5" max="1.9" step="0.05">
+      </div>
+      <div class="field">
+        <label for="sweepPow">Sweeping effect <span id="sweepPowV"></span></label>
+        <input type="range" id="sweepPow" min="0" max="1.5" step="0.05">
+      </div>
+      <div class="field">
+        <label for="youLvl">Your delivery</label>
+        <select id="youLvl"><option value="perfect">Perfect: goes exactly where called</option><option value="elite">Elite</option><option value="competitive">Competitive</option><option value="club">Club</option></select>
+      </div>
+      <div class="field">
+        <label for="cpuLvl">Computer delivery</label>
+        <select id="cpuLvl"><option value="perfect">Perfect</option><option value="elite">Elite</option><option value="competitive">Competitive</option><option value="club">Club</option></select>
+      </div>
+      <div class="field">
+        <label for="playback">Playback</label>
+        <select id="playback"><option value="real">Real time</option><option value="fast">Fast</option><option value="instant">Instant</option></select>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="newModal" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="ngTitle">
+    <h2 id="ngTitle">New game</h2>
+    <div class="label">Opponent</div>
+    <div class="opts" id="ngMode">
+      <button class="opt" data-v="cpu" aria-pressed="true">Computer<small>It reads the ice and throws back</small></button>
+      <button class="opt" data-v="friend" aria-pressed="false">A friend<small>Take turns on this screen</small></button>
+      <button class="opt" data-v="practice" aria-pressed="false">Practice<small>Throw either color, no score</small></button>
+    </div>
+    <div id="ngSideWrap">
+      <div class="label">You throw</div>
+      <div class="opts" id="ngSide">
+        <button class="opt" data-v="0" aria-pressed="true"><span class="chip t0"></span>Red</button>
+        <button class="opt" data-v="1" aria-pressed="false"><span class="chip t1"></span>Yellow</button>
+      </div>
+    </div>
+    <div class="label">Hammer in the first end</div>
+    <div class="opts" id="ngHammer">
+      <button class="opt" data-v="1" aria-pressed="true"><span class="chip t1"></span>Yellow</button>
+      <button class="opt" data-v="0" aria-pressed="false"><span class="chip t0"></span>Red</button>
+      <button class="opt" data-v="coin" aria-pressed="false">Coin toss</button>
+    </div>
+    <div class="label">Ends</div>
+    <div class="opts" id="ngEnds">
+      <button class="opt" data-v="6" aria-pressed="false">6</button>
+      <button class="opt" data-v="8" aria-pressed="true">8</button>
+      <button class="opt" data-v="10" aria-pressed="false">10</button>
+    </div>
+    <div class="row2" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn" id="ngCancel">Cancel</button>
+      <button class="btn primary" id="ngStart">Start game</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/*ENGINE*/
+// ---------- Sheet geometry (metres; y = 0 on the tee line, positive toward the far hog line) ----------
+const R = 0.145, HW = 2.375, HOUSE = 1.829, R8 = 1.219, R4 = 0.610, RBUT = 0.152;
+const BACK = -1.829, HOG = 6.401, HOGD = 21.945, NEAR = HOG + HOGD, HACK = -3.658;
+const VIEW_TOP = -2.45, VIEW_BOT = 7.15;
+const SHEET_TOP = HACK - 0.3, SHEET_BOT = NEAR + 6.401 + 3.658 + 0.3;
+const E = 0.92; // restitution in stone-on-stone collisions
+
+const ICE = { drawT: 14.5, curl: 1.22, sweep: 0.6, a: 0.0743, K: 0.008 };
+let ANCH = [];
+
+function accForDrawTime(T) { // deceleration so a draw to the tee takes T seconds hog to hog
+  const A = 0.5 * T * T, B = Math.sqrt(2 * HOG) * T;
+  const s = (-B + Math.sqrt(B * B + 4 * A * HOGD)) / (2 * A); return s * s;
+}
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// Sweeping warms the ice and lowers friction: a stone swept the full length travels up to ~3 m (6-10 ft)
+// farther and curls less. Modeled as reduced deceleration and reduced curl while the thrown stone is swept.
+// ICE.sweep scales the effect: 1 = hard sweeping (12% less friction, 35% less curl), 0 = no effect.
+const sweepFric = () => 1 - 0.12 * ICE.sweep, sweepCurl = () => 1 - 0.35 * ICE.sweep;
+
+// createSim(stones, shot, rec): delivers `shot` from the near hog line toward the broom; advance with stepSim.
+function createSim(stones, shot, rec) {
+  const bs = stones.map(s => ({ id: s.id, team: s.team, x: s.x, y: s.y, vx: 0, vy: 0, spin: 0, mv: false, out: false, ang: s.ang || 0, thrown: false, moved: false, hit: false, reason: '' }));
+  const dx = shot.bx, dy = shot.by - NEAR, L = Math.hypot(dx, dy);
+  const t = { id: shot.id, team: shot.team, x: 0, y: NEAR, vx: dx / L * shot.v0, vy: dy / L * shot.v0, spin: shot.spin, mv: true, out: false, ang: shot.ang0 || 0, thrown: true, moved: true, hit: false, reason: '', firstHit: null };
+  bs.push(t);
+  const sim = { bodies: bs, thrown: t, frames: rec ? [] : null, time: 0, steps: 0, done: false, swept: 0 };
+  if (rec) snapSim(sim);
+  return sim;
+}
+function snapSim(sim) {
+  const bs = sim.bodies, n = bs.length, p = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { const b = bs[i]; p[i * 3] = b.out ? NaN : b.x; p[i * 3 + 1] = b.y; p[i * 3 + 2] = b.ang; }
+  sim.frames.push({ t: sim.time, p });
+}
+function stepSim(sim, sweep) {
+  if (sim.done) return;
+  const bs = sim.bodies, t = sim.thrown, n = bs.length, a = ICE.a;
+  // adaptive step: coarse while a lone stone is far from everything (always fine while sweeping)
+  let movers = 0, gap = 1e9;
+  let vmax = 0;
+  for (let i = 0; i < n; i++) if (bs[i].mv && !bs[i].out) { movers++; vmax = Math.max(vmax, Math.hypot(bs[i].vx, bs[i].vy)); }
+  if (!movers || sim.steps >= 12000) {
+    sim.done = true;
+    if (!t.out && !t.hit && t.y > HOG - R) { t.out = true; t.reason = 'hog'; if (sim.frames) snapSim(sim); }
+    return;
+  }
+  if (movers === 1 && t.mv && !t.out) { for (let i = 0; i < n - 1; i++) { const b = bs[i]; if (b.out) continue; const d = Math.hypot(b.x - t.x, b.y - t.y); if (d < gap) gap = d; } }
+  else gap = 0;
+  // the step never lets the stone cover more than half its clearance, so it can't skip past a collision
+  // fine steps keep each move to ~2.5 cm near other stones
+  const fine = sweep ? 0.01 : clamp(0.025 / (vmax + 1e-6), 0.01, 0.05);
+  const dt = gap > 1.4 && !sweep ? clamp((gap - 1.0) / (2 * (Math.hypot(t.vx, t.vy) + 0.05)), Math.max(fine, 0.04), 0.15) : fine;
+  for (let i = 0; i < n; i++) {
+    const b = bs[i]; if (!b.mv || b.out) continue;
+    const sw = sweep && b.thrown, ab = sw ? a * sweepFric() : a;
+    const v = Math.hypot(b.vx, b.vy);
+    if (v <= ab * dt) { b.vx = b.vy = 0; b.mv = false; continue; }
+    if (b.spin) {
+      const al = Math.min(ICE.K / (v + 0.1), 0.6 * a) * Math.abs(b.spin) * (sw ? sweepCurl() : 1);
+      const th = Math.sign(b.spin) * al * dt / v, c = Math.cos(th), s = Math.sin(th);
+      const vx = b.vx * c - b.vy * s; b.vy = b.vx * s + b.vy * c; b.vx = vx;
+    }
+    const k = (v - ab * dt) / v; b.vx *= k; b.vy *= k;
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    b.ang += (b.spin || 0) * 0.9 * dt;
+    if (sw) sim.swept += dt;
+    if (Math.abs(b.x) > HW - R) { b.out = true; b.mv = false; b.reason = 'boards'; }
+    else if (b.y < BACK - R) { b.out = true; b.mv = false; b.reason = 'back'; }
+  }
+  for (let i = 0; i < n; i++) {
+    const A = bs[i]; if (A.out) continue;
+    for (let j = i + 1; j < n; j++) {
+      const B = bs[j]; if (B.out || (!A.mv && !B.mv)) continue;
+      const ddx = B.x - A.x, ddy = B.y - A.y, d2 = ddx * ddx + ddy * ddy;
+      if (d2 >= 4 * R * R) continue;
+      const d = Math.sqrt(d2) || 1e-6, nx = ddx / d, ny = ddy / d;
+      const rv = (A.vx - B.vx) * nx + (A.vy - B.vy) * ny;
+      if (rv > 0) {
+        const imp = (1 + E) / 2 * rv;
+        if (!A.mv) A.spin = 0; else A.spin *= 0.5;
+        if (!B.mv) B.spin = 0; else B.spin *= 0.5;
+        A.vx -= imp * nx; A.vy -= imp * ny; B.vx += imp * nx; B.vy += imp * ny;
+        A.mv = B.mv = true; A.moved = B.moved = true; A.hit = B.hit = true;
+        if (A.thrown && t.firstHit === null) t.firstHit = B.id;
+        if (B.thrown && t.firstHit === null) t.firstHit = A.id;
+      }
+      const pen = (2 * R - d) / 2;
+      A.x -= nx * pen; A.y -= ny * pen; B.x += nx * pen; B.y += ny * pen;
+    }
+  }
+  sim.time += dt; sim.steps++;
+  if (sim.frames) snapSim(sim);
+}
+function simulate(stones, shot, rec) {
+  const sim = createSim(stones, shot, rec);
+  while (!sim.done) stepSim(sim, false);
+  return sim;
+}
+
+function calibrateIce() {
+  ICE.a = accForDrawTime(ICE.drawT);
+  ICE.K = 0.008;
+  const v = Math.sqrt(2 * ICE.a * NEAR);
+  for (let i = 0; i < 6; i++) {
+    const r = simulate([], { team: 0, bx: 0, by: 0, v0: v, spin: 1, id: -1 });
+    if (Math.abs(r.thrown.x) > 1e-4) ICE.K *= ICE.curl / r.thrown.x;
+  }
+  const vS = y => Math.sqrt(2 * ICE.a * (NEAR - y));
+  const vT = T => (HOGD + 0.5 * ICE.a * T * T) / T;
+  const p = [[0, vS(HOG + 0.8)], [0.30, vS(HOUSE + R)], [0.62, vS(-HOUSE - R)], [0.72, vT(12)], [0.80, vT(10.5)], [0.89, vT(9)], [1, vT(7)]];
+  for (let i = 1; i < p.length; i++) if (p[i][1] <= p[i - 1][1] + 0.01) p[i][1] = p[i - 1][1] + 0.02;
+  ANCH = p;
+}
+function vFromU(u) {
+  u = clamp(u, 0, 1);
+  for (let i = 1; i < ANCH.length; i++) if (u <= ANCH[i][0]) { const [u0, v0] = ANCH[i - 1], [u1, v1] = ANCH[i]; return v0 + (v1 - v0) * (u - u0) / (u1 - u0); }
+  return ANCH[ANCH.length - 1][1];
+}
+function uFromV(v) {
+  if (v <= ANCH[0][1]) return 0;
+  for (let i = 1; i < ANCH.length; i++) if (v <= ANCH[i][1]) { const [u0, v0] = ANCH[i - 1], [u1, v1] = ANCH[i]; return u0 + (u1 - u0) * (v - v0) / (v1 - v0); }
+  return 1;
+}
+function hogTime(v) { const disc = v * v - 2 * ICE.a * HOGD; return disc <= 0 ? null : (v - Math.sqrt(disc)) / ICE.a; }
+function vFromHogTime(T) { return (HOGD + 0.5 * ICE.a * T * T) / T; }
+function stopY(v) { return NEAR - v * v / (2 * ICE.a); }
+function weightName(v) {
+  const y = stopY(v), T = hogTime(v);
+  if (y > HOG - R) return 'Hog';
+  if (y > HOUSE + R) return y > 4.6 ? 'Long guard' : y < 2.9 ? 'Tight guard' : 'Guard';
+  if (y >= -HOUSE - R) {
+    if (y > R8) return 'Top 12'; if (y > R4) return 'Top 8'; if (y > RBUT) return 'Top 4';
+    if (y >= -RBUT) return 'Tee'; if (y >= -R4) return 'Back 4'; if (y >= -R8) return 'Back 8'; return 'Back 12';
+  }
+  if (y >= HACK) return 'Back line';
+  if (T > 11.25) return 'Board'; if (T > 9.75) return 'Control'; if (T > 8.25) return 'Normal'; return 'Peel';
+}
+
+// ---------- Rules ----------
+const dist0 = s => Math.hypot(s.x, s.y);
+const inHouse = s => dist0(s) - R <= HOUSE;
+const inFGZ = s => !inHouse(s) && s.y > 0;
+function scoreOf(stones) {
+  const list = stones.filter(inHouse).map(s => ({ s, d: dist0(s) })).sort((a, b) => a.d - b.d);
+  if (!list.length) return { team: -1, pts: 0, list };
+  const team = list[0].s.team; let pts = 0;
+  for (const e of list) { if (e.s.team !== team) break; pts++; }
+  return { team, pts, list };
+}
+function ringName(p) {
+  const d = dist0(p);
+  let ring = d <= RBUT + R * 0.5 ? 'the button' : d <= R4 + R ? 'the 4-foot' : d <= R8 + R ? 'the 8-foot' : 'the 12-foot';
+  if (ring === 'the button') return ring;
+  const where = p.y > Math.max(0.2, Math.abs(p.x)) ? 'top ' : p.y < -Math.max(0.2, Math.abs(p.x)) ? 'back ' : '';
+  return where ? where + ring.slice(4) : ring;
+}
+function guardName(p) {
+  const c = Math.abs(p.x) < 0.6 ? 'center guard' : 'corner guard';
+  const pre = p.y > 4.6 ? 'Long ' : p.y < 2.9 ? 'Tight ' : '';
+  return pre ? pre + c : c[0].toUpperCase() + c.slice(1);
+}
+function describe(before, sim, violation) {
+  const t = sim.thrown, team = t.team;
+  if (violation) return 'Free guard zone violation';
+  if (t.reason === 'hog') return 'Hogged';
+  if (!t.hit) {
+    if (t.out) return t.reason === 'boards' ? 'Wrecked on the boards' : 'Through the house';
+    return inHouse(t) ? 'Draw to ' + ringName(t) : guardName(t);
+  }
+  const others = sim.bodies.filter(b => !b.thrown && b.moved);
+  const oppOut = others.filter(b => b.team !== team && b.out).length;
+  const ownOut = others.filter(b => b.team === team && b.out).length;
+  const oppMoved = others.filter(b => b.team !== team).length;
+  const first = before.find(s => s.id === t.firstHit);
+  if (oppOut >= 2) return t.out ? 'Double takeout, shooter rolled out' : 'Double takeout';
+  if (oppOut === 1) {
+    if (t.out) return ownOut ? 'Hit, but took out our own too' : 'Hit and roll out';
+    if (first && Math.hypot(t.x - first.x, t.y - first.y) < 0.35) return 'Hit and stick';
+    return inHouse(t) ? 'Hit and roll to ' + ringName(t) : 'Hit and roll to a guard';
+  }
+  if (ownOut && !oppMoved) return 'Removed our own stone';
+  if (first && first.team === team && !oppMoved) return inHouse(first) || others.some(b => b.team === team && !b.out && inHouse(b)) ? 'Raise' : 'Tap our guard';
+  if (oppMoved) return inHouse(t) ? 'Tap back to ' + ringName(t) : t.out ? 'Chip' : 'Chip and stay';
+  return 'Hit';
+}
+function resolveShot(stones, shot, shotNo, rec) {
+  return finalizeShot(stones, simulate(stones, shot, rec), shotNo);
+}
+function finalizeShot(stones, sim, shotNo) {
+  const shot = sim.thrown;
+  let violation = false;
+  if (shotNo < 5) for (const b of sim.bodies) {
+    if (b.thrown || !b.out || b.team === shot.team) continue;
+    const orig = stones.find(s => s.id === b.id);
+    if (orig && inFGZ(orig)) violation = true;
+  }
+  const next = violation ? stones.map(s => ({ ...s }))
+    : sim.bodies.filter(b => !b.out).map(b => ({ id: b.id, team: b.team, x: b.x, y: b.y, ang: b.ang }));
+  return { stones: next, sim, violation, label: describe(stones, sim, violation) };
+}
+
+// ---------- Evaluation (value in "points", from team P's side) ----------
+function endValue(stones, P, hammer, H) {
+  const sc = scoreOf(stones);
+  if (!sc.pts) return hammer === P ? H : -H;  // blank: hammer stays
+  const v = sc.pts - H;                       // scoring hands the hammer over
+  return sc.team === P ? v : -v;
+}
+const covered = (s, st) => st.some(o => o !== s && o.y > s.y + 0.25 && o.y < HOG && Math.abs(o.x - s.x) < 0.3);
+const coversOwn = (g, st) => st.some(o => o !== g && o.team === g.team && inHouse(o) && o.y < g.y - 0.25 && Math.abs(o.x - g.x) < 0.3);
+function evaluate(stones, P, done, hammer, H) {
+  if (done >= 16) return endValue(stones, P, hammer, H);
+  const late = done / 16;
+  const sc = scoreOf(stones); let v = 0;
+  if (sc.pts) v += (sc.team === P ? 1 : -1) * sc.pts * (0.3 + 0.6 * late);
+  for (const e of sc.list) {
+    const sg = e.s.team === P ? 1 : -1;
+    v += sg * 0.35 * (1 - e.d / (HOUSE + R));
+    if (covered(e.s, stones)) v += sg * 0.25 * (1.4 - late);
+  }
+  for (const s of stones) {
+    if (inHouse(s) || s.y <= 0) continue;
+    const sg = s.team === P ? 1 : -1, ham = s.team === hammer, c = Math.abs(s.x) < 0.6;
+    let g = c ? (ham ? 0.04 : 0.45) : (ham ? 0.32 : 0.06);
+    if (s.y > 5.2) g *= 0.6;
+    if (coversOwn(s, stones)) g += 0.2;
+    v += sg * g * (1 - late * 0.8);
+  }
+  return v;
+}
+
+// ---------- Shot search ----------
+function mkShot(team, bx, u, spin, by = 0) { return { team, bx, by, u, v0: vFromU(u), spin, id: -1 }; }
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function gauss(r) { let u = 0; while (!u) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); }
+const LEVELS = { perfect: { v: 0, x: 0 }, elite: { v: 0.005, x: 0.04 }, competitive: { v: 0.009, x: 0.07 }, club: { v: 0.016, x: 0.12 } };
+function perturb(shot, lv, r) { return { ...shot, v0: shot.v0 * (1 + gauss(r) * lv.v), bx: shot.bx + gauss(r) * lv.x }; }
+const tick = () => new Promise(r => setTimeout(r, 0));
+
+function shotCategory(label) {
+  if (/^Draw/.test(label)) return 'Draw';
+  if (/guard$/i.test(label) && !/^(Hit|Tap)/.test(label)) return 'Guard';
+  if (/^(Raise|Tap|Chip)/.test(label)) return 'Tap / raise';
+  if (/^Hit|takeout/i.test(label)) return 'Takeout';
+  return 'Other';
+}
+const RISK = 0.6;
+function difficultyOf(p) {
+  return p >= 0.8 ? 'Easy' : p >= 0.55 ? 'Moderate' : p >= 0.3 ? 'Hard' : 'Very hard';
+}
+
+async function findShots(ctx, onProg = () => {}, alive = () => true) {
+  const { stones, shotNo, hammer, team, H } = ctx, O = 1 - team, done = shotNo + 1;
+  const ev = (st, P, d) => evaluate(st, P, d, hammer, H);
+  const xs = []; for (let i = -20; i <= 20; i++) xs.push(i / 10);
+  const us = [0.08, 0.17, 0.25, 0.33, 0.39, 0.45, 0.51, 0.57, 0.67, 0.76, 0.85, 0.95];
+  const total = xs.length * us.length * 2; let n = 0; const C = [];
+  for (const spin of [1, -1]) for (const x of xs) for (const u of us) {
+    const sh = mkShot(team, x, u, spin), r = resolveShot(stones, sh, shotNo);
+    C.push({ shot: sh, res: r, v: ev(r.stones, team, done), cat: shotCategory(r.label) });
+    if (++n % 40 === 0) { onProg(0.35 * n / total); await tick(); if (!alive()) return null; }
+  }
+  C.sort((a, b) => b.v - a.v);
+  const similar = (a, b) => a.res.label === b.res.label && a.shot.spin === b.shot.spin &&
+    (a.res.sim.thrown.out && b.res.sim.thrown.out || Math.hypot(a.res.sim.thrown.x - b.res.sim.thrown.x, a.res.sim.thrown.y - b.res.sim.thrown.y) < 0.6);
+  const usable = c => !c.res.violation && c.res.sim.thrown.reason !== 'hog' && c.cat !== 'Other';
+  // shortlist: the best calls overall, plus the best two of every shot type so draws and guards get a fair look
+  const top = [];
+  const add = c => { if (!top.some(t => similar(t, c))) { top.push(c); return true; } return false; };
+  for (const c of C) { if (top.length >= 4) break; if (usable(c)) add(c); }
+  for (const cat of ['Draw', 'Guard', 'Takeout', 'Tap / raise']) {
+    let k = top.filter(t => t.cat === cat).length;
+    for (const c of C) { if (k >= 1) break; if (c.cat === cat && usable(c) && add(c)) k++; }
+  }
+  if (!top.length) top.push(C[0]);
+  for (const c of top) for (let pass = 0; pass < 2; pass++) for (const [dx, du] of [[0.05, 0], [-0.05, 0], [0.02, 0], [-0.02, 0], [0, 0.012], [0, -0.012], [0, 0.005], [0, -0.005]]) {
+    const sh = mkShot(team, +(c.shot.bx + dx).toFixed(3), clamp(c.shot.u + du, 0, 1), c.shot.spin), r = resolveShot(stones, sh, shotNo), v = ev(r.stones, team, done);
+    if (v > c.v + 1e-6 && !r.violation && shotCategory(r.label) === c.cat) { c.shot = sh; c.res = r; c.v = v; }
+  }
+  onProg(0.42); await tick(); if (!alive()) return null;
+  // difficulty: how often a competitive thrower makes it (same kind of shot, result nearly as good)
+  const lv = LEVELS.competitive, NS = 10;
+  for (const c of top) {
+    const r = rng(7919); let sum = 0, made = 0;
+    for (let k = 0; k < NS; k++) {
+      const rr = resolveShot(stones, perturb(c.shot, lv, r), shotNo), v = ev(rr.stones, team, done);
+      sum += v; if (shotCategory(rr.label) === c.cat && v >= c.v - 0.3) made++;
+    }
+    c.robust = sum / NS; c.make = made / NS; c.difficulty = difficultyOf(c.make);
+  }
+  if (done < 16) {
+    const rx = []; for (let i = -8; i <= 8; i++) rx.push(i / 4);
+    const ru = [0.17, 0.33, 0.45, 0.52, 0.76, 0.85, 0.95];
+    let k = 0; const tot = top.length * rx.length * ru.length * 2;
+    for (const c of top) {
+      let best = -1e9, bestLabel = '';
+      for (const spin of [1, -1]) for (const x of rx) for (const u of ru) {
+        const r = resolveShot(c.res.stones, mkShot(O, x, u, spin), done);
+        const v = ev(r.stones, O, done + 1);
+        if (v > best) { best = v; bestLabel = r.label; }
+        if (++k % 40 === 0) { onProg(0.45 + 0.55 * k / tot); await tick(); if (!alive()) return null; }
+      }
+      c.reply = bestLabel; c.mm = -best;
+      c.score = c.mm + (c.robust - c.v) - RISK * (1 - c.make);   // expected cost of misses, plus a skip's dislike of long odds
+    }
+  } else top.forEach(c => { c.score = c.robust - RISK * 0.5 * (1 - c.make); });
+  top.sort((a, b) => b.score - a.score);
+  onProg(1);
+  return top;
+}
+// Top three by rating, plus the best draw / guard / takeout when it's a reasonable alternative.
+function pickSuggestions(list) {
+  const out = [];
+  for (const c of list) { if (out.length >= 3) break; if (!out.some(o => o.res.label === c.res.label)) out.push(c); }
+  if (!out.length) return out;
+  const best = out[0].score;
+  for (const cat of ['Draw', 'Guard', 'Takeout']) {
+    if (out.some(c => c.cat === cat)) continue;
+    const alt = list.find(c => c.cat === cat && !out.some(o => o.res.label === c.res.label));
+    if (alt && alt.score >= best - 1.0) out.push({ ...alt, alt: true });
+  }
+  return out;
+}
+/*END ENGINE*/
+
+// ================= App =================
+const $ = s => document.querySelector(s);
+const TEAM = ['Red', 'Yellow'];
+const PLAY = { real: { out: 1, inn: 1 }, fast: { out: 5, inn: 1.7 }, instant: null };
+const hammerSvg = '<span class="hammer" title="Hammer (last stone)"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2" width="9" height="5" rx="1" fill="currentColor"/><rect x="5" y="6" width="2.4" height="9" rx="1" fill="currentColor"/></svg></span>';
+
+let S = null;
+const UI = { tool: 'broom', sweeping: false, broom: { x: -0.7, y: 0 }, u: 0.45, spin: 1, pick: null, showPath: false, anim: null, busy: false,
+  sugs: null, sugFor: -1, hover: null, preview: null, markup: [], drag: null, aiToken: 0, thinking: '',
+  set: { playback: 'fast', you: 'perfect', cpu: 'competitive' } };
+
+function newState(o) {
+  const nEnds = o.nEnds || 8;
+  return { mode: o.mode, cpuTeam: o.cpuTeam ?? 1, nEnds, end: 0, shotNo: 0, hammer: o.hammer ?? 1,
+    scores: [Array(nEnds).fill(null), Array(nEnds).fill(null)], stones: [], nextId: 1, hist: [], log: [],
+    endOver: false, gameOver: false, sample: false };
+}
+function sampleState() {
+  const s = newState({ mode: 'practice', hammer: 1 });
+  s.sample = true; s.shotNo = 10;
+  const pos = [[0, 0.24, 0.36], [0, -0.52, 3.15], [0, 0.95, -0.92], [1, -0.34, -0.48], [1, 1.12, 3.65], [1, -1.32, 0.62]];
+  s.stones = pos.map(([team, x, y]) => ({ id: s.nextId++, team, x, y, ang: Math.random() * 6 }));
+  return s;
+}
+function firstTeam() { return 1 - S.hammer; }
+function throwingTeam() {
+  if (S.mode === 'practice' && UI.pick != null) return UI.pick;
+  return S.shotNo % 2 === 0 ? firstTeam() : S.hammer;
+}
+function stonesLeft(team) {
+  const thrown = team === firstTeam() ? Math.ceil(S.shotNo / 2) : Math.floor(S.shotNo / 2);
+  return Math.max(0, 8 - thrown);
+}
+const isCpuTurn = () => S.mode === 'cpu' && !S.endOver && !S.gameOver && throwingTeam() === S.cpuTeam;
+const lastEnd = () => S.end >= S.nEnds - 1;
+const totals = t => S.scores[t].reduce((a, b) => a + (b || 0), 0);
+
+// ---------- persistence ----------
+function save() {
+  try { localStorage.setItem('housecall.v1', JSON.stringify({ S, ice: { drawT: ICE.drawT, curl: ICE.curl, sweep: ICE.sweep }, set: UI.set, broom: UI.broom, u: UI.u, spin: UI.spin })); } catch (e) {}
+}
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem('housecall.v1') || 'null');
+    if (!d || !d.S) return false;
+    S = d.S; Object.assign(UI.set, d.set || {});
+    if (d.ice) { ICE.drawT = d.ice.drawT; ICE.curl = d.ice.curl; if (d.ice.sweep != null) ICE.sweep = d.ice.sweep; }
+    if (d.broom) UI.broom = d.broom; if (d.u != null) UI.u = d.u; if (d.spin) UI.spin = d.spin;
+    return true;
+  } catch (e) { return false; }
+}
+
+// ---------- colors from tokens ----------
+let COL = {};
+function readColors() {
+  const cs = getComputedStyle(document.documentElement), g = n => cs.getPropertyValue(n).trim();
+  COL = { ice: g('--ice'), pebble: g('--pebble'), blue: g('--ring-blue'), red: g('--ring-red'), white: g('--ring-white'), mark: g('--mark'),
+    fgz: g('--fgz'), pen: g('--pen'), t0: g('--red'), t1: g('--yellow'), ink: g('--ink'), accent: g('--accent'), muted: g('--muted'), panel: g('--panel'), line: g('--line') };
+}
+
+// ---------- canvas setup ----------
+const main = $('#main'), mini = $('#mini');
+const mctx = main.getContext('2d'), nctx = mini.getContext('2d');
+let SC = 60, MSC = 10, DPR = 1, pebbleCanvas = null;
+
+function layout() {
+  const wrap = $('.sheet-col'); const cw = wrap.clientWidth;
+  if (cw < 120) return;
+  const narrow = innerWidth < 720;
+  const viewH = VIEW_BOT - VIEW_TOP, mainAsp = 2 * HW / viewH, miniAsp = 2 * HW / (SHEET_BOT - SHEET_TOP);
+  let H = narrow ? Math.min(innerHeight * 0.74, 680) : clamp(innerHeight - 150, 440, 940);
+  const need = H * (mainAsp + miniAsp) + 10;
+  if (need > cw) H = (cw - 10) / (mainAsp + miniAsp);
+  SC = H / viewH; MSC = H / (SHEET_BOT - SHEET_TOP);
+  DPR = window.devicePixelRatio || 1;
+  const mw = Math.floor(2 * HW * SC), mh = Math.floor(H), nw = Math.max(18, Math.floor(2 * HW * MSC));
+  main.style.width = mw + 'px'; main.style.height = mh + 'px'; main.width = mw * DPR; main.height = mh * DPR;
+  mini.style.width = nw + 'px'; mini.style.height = mh + 'px'; mini.width = nw * DPR; mini.height = mh * DPR;
+  makePebble(mw, mh);
+  draw();
+}
+function makePebble(w, h) {
+  pebbleCanvas = document.createElement('canvas'); pebbleCanvas.width = w * DPR; pebbleCanvas.height = h * DPR;
+  const c = pebbleCanvas.getContext('2d'), r = rng(42); c.fillStyle = COL.pebble;
+  for (let i = 0; i < w * h / 55; i++) { c.beginPath(); c.arc(r() * w * DPR, r() * h * DPR, (0.5 + r() * 1.1) * DPR, 0, 7); c.fill(); }
+}
+const sx = x => (x + HW) * SC, sy = y => (y - VIEW_TOP) * SC;
+const wx = px => px / SC - HW, wy = py => py / SC + VIEW_TOP;
+
+// ---------- drawing ----------
+function drawHouse(ctx, s, cx, cy) {
+  const ring = (r, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(cx, cy, r * s, 0, Math.PI * 2); ctx.fill(); };
+  ring(HOUSE, COL.blue); ring(R8, COL.white); ring(R4, COL.red); ring(RBUT, COL.white);
+}
+function drawStone(ctx, x, y, team, ang, s, alpha = 1, ghost = false) {
+  const r = R * s;
+  ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y);
+  if (ghost) {
+    ctx.setLineDash([4, 3]); ctx.lineWidth = 2; ctx.strokeStyle = team ? COL.t1 : COL.t0;
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); return;
+  }
+  ctx.fillStyle = 'rgba(10,25,40,.22)'; ctx.beginPath(); ctx.arc(r * 0.08, r * 0.12, r * 1.02, 0, Math.PI * 2); ctx.fill();
+  const g = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
+  g.addColorStop(0, '#9aa3ab'); g.addColorStop(0.7, '#6f7880'); g.addColorStop(1, '#4b535a');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = team ? COL.t1 : COL.t0; ctx.beginPath(); ctx.arc(0, 0, r * 0.66, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = Math.max(1, r * 0.06); ctx.stroke();
+  ctx.rotate(ang);
+  ctx.fillStyle = 'rgba(20,25,30,.78)';
+  const hw = r * 0.95, hh = r * 0.2; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-hw / 2, -hh / 2, hw, hh, hh / 2) : ctx.rect(-hw / 2, -hh / 2, hw, hh); ctx.fill();
+  ctx.restore();
+}
+function drawBroom(ctx, x, y, team, alpha = 1) {
+  // a Hardline-style broom head: one rounded rectangle held vertically (along the sheet)
+  const w = 0.11 * SC, h = 0.30 * SC;
+  ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y);
+  ctx.fillStyle = team ? COL.t1 : COL.t0; ctx.strokeStyle = COL.mark; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-w / 2, -h / 2, w, h, w / 2) : ctx.rect(-w / 2, -h / 2, w, h);
+  ctx.fill(); ctx.stroke(); ctx.restore();
+}
+function animFrame() {
+  const A = UI.anim; if (!A) return null;
+  const sim = A.sim, P = A.prev, span = sim.time - A.prevT;
+  const k = P && span > 0 ? clamp((A.clock - A.prevT) / span, 0, 1) : 1;
+  const out = [];
+  sim.bodies.forEach((b, i) => {
+    if (b.out) return;
+    const lerp = (j, v) => P && j < P.length ? P[j] + (v - P[j]) * k : v;
+    out.push({ team: b.team, x: lerp(i * 3, b.x), y: lerp(i * 3 + 1, b.y), ang: lerp(i * 3 + 2, b.ang), thrown: b.thrown });
+  });
+  return out;
+}
+function drawSweepers(ctx) {
+  const A = UI.anim; if (!A || !UI.sweeping || !canSweep()) return;
+  const t = A.sim.thrown; if (t.out || !t.mv) return;
+  const v = Math.hypot(t.vx, t.vy) || 1, ux = t.vx / v, uy = t.vy / v;
+  const w = 0.30 * SC, h = 0.11 * SC, ph = performance.now() / 70;
+  ctx.save(); ctx.fillStyle = A.team ? COL.t1 : COL.t0; ctx.strokeStyle = COL.mark; ctx.lineWidth = 1.5;
+  [[0.36, 1], [0.62, -1]].forEach(([ahead, dir]) => {
+    const wig = Math.sin(ph + (dir > 0 ? 0 : 1.6)) * 0.13;
+    const px = t.x + ux * ahead - uy * wig, py = t.y + uy * ahead + ux * wig;
+    ctx.save(); ctx.translate(sx(px), sy(py)); ctx.rotate(Math.atan2(uy, ux) + Math.PI / 2 + dir * 0.25);
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-w / 2, -h / 2, w, h, h / 2) : ctx.rect(-w / 2, -h / 2, w, h); ctx.fill(); ctx.stroke(); ctx.restore();
+  });
+  ctx.restore();
+}
+function drawPath(ctx, res, sim) {
+  const fr = sim.frames; if (!fr) return;
+  sim.bodies.forEach((b, i) => {
+    if (!b.moved) return;
+    ctx.save(); ctx.strokeStyle = b.thrown ? (b.team ? COL.t1 : COL.t0) : COL.muted; ctx.lineWidth = b.thrown ? 2.5 : 1.8;
+    ctx.setLineDash(b.thrown ? [] : [5, 4]); ctx.globalAlpha = 0.85; ctx.beginPath();
+    let started = false;
+    for (let f = 0; f < fr.length; f += 2) {
+      const x = fr[f].p[i * 3], y = fr[f].p[i * 3 + 1];
+      if (Number.isNaN(x) || y > VIEW_BOT + 1) { started = false; continue; }
+      if (!started) { ctx.moveTo(sx(x), sy(y)); started = true; } else ctx.lineTo(sx(x), sy(y));
+    }
+    ctx.stroke(); ctx.restore();
+  });
+  sim.bodies.forEach(b => { if (b.moved && !b.out) drawStone(ctx, sx(b.x), sy(b.y), b.team, 0, SC, 0.9, true); });
+}
+function draw() {
+  if (!S || !COL.ice) return;
+  const ctx = mctx, w = main.width / DPR, h = main.height / DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = COL.ice; ctx.fillRect(0, 0, w, h);
+  if (pebbleCanvas) ctx.drawImage(pebbleCanvas, 0, 0, w, h);
+  // free guard zone tint while it protects guards
+  if (S.shotNo < 5 && !UI.anim) {
+    ctx.fillStyle = COL.fgz; ctx.fillRect(0, sy(0), w, sy(HOG) - sy(0));
+    ctx.fillStyle = COL.muted; ctx.font = '600 11px ' + getComputedStyle(document.body).getPropertyValue('--f-display');
+    ctx.textAlign = 'center'; ctx.fillText('FREE GUARD ZONE', w / 2, sy(HOG) - 8);
+  }
+  drawHouse(ctx, SC, sx(0), sy(0));
+  ctx.strokeStyle = COL.mark; ctx.globalAlpha = 0.75;
+  const line = (x0, y0, x1, y1, lw) => { ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(sx(x0), sy(y0)); ctx.lineTo(sx(x1), sy(y1)); ctx.stroke(); };
+  line(0, VIEW_TOP, 0, VIEW_BOT, 1.2); line(-HW, 0, HW, 0, 1.2); line(-HW, BACK, HW, BACK, 1.6);
+  ctx.globalAlpha = 1; ctx.strokeStyle = COL.blue; line(-HW, HOG, HW, HOG, Math.max(3, 0.1 * SC));
+  ctx.strokeStyle = COL.mark; ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.arc(sx(0), sy(HACK), 4, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
+  ctx.fillStyle = COL.muted; ctx.globalAlpha = 0.8; ctx.font = '600 10px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('HOG', 6, sy(HOG) - 6); ctx.fillText('TEE', 6, sy(0) - 4); ctx.fillText('BACK', 6, sy(BACK) - 4); ctx.globalAlpha = 1;
+  // markup
+  ctx.strokeStyle = COL.pen; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const st of UI.markup) { if (st.length < 2) continue; ctx.beginPath(); ctx.moveTo(sx(st[0][0]), sy(st[0][1])); for (const p of st) ctx.lineTo(sx(p[0]), sy(p[1])); ctx.stroke(); }
+  const team = throwingTeam();
+  const ready = !UI.anim && !S.endOver && !S.gameOver;
+  // aim line from the near end to the broom
+  if (ready) {
+    const b = UI.hover ? { x: UI.hover.shot.bx, y: UI.hover.shot.by } : UI.broom;
+    const s = (NEAR - VIEW_BOT) / (NEAR - b.y);
+    ctx.save(); ctx.setLineDash([2, 6]); ctx.strokeStyle = COL.mark; ctx.globalAlpha = 0.5; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(sx(b.x * s), sy(VIEW_BOT)); ctx.lineTo(sx(b.x), sy(b.y)); ctx.stroke(); ctx.restore();
+    if (UI.preview) drawPath(ctx, UI.preview, UI.preview.sim);
+  }
+  // stones
+  const live = UI.anim ? animFrame() : S.stones;
+  const sc = UI.anim ? null : scoreOf(S.stones);
+  drawSweepers(ctx);
+  for (const s of live) drawStone(ctx, sx(s.x), sy(s.y), s.team, s.ang || 0, SC);
+  if (sc && sc.pts) {
+    sc.list.slice(0, sc.pts).forEach((e, i) => {
+      const x = sx(e.s.x) + R * SC * 0.8, y = sy(e.s.y) - R * SC * 0.8;
+      ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.arc(x, y, 8, 0, 7); ctx.fill();
+      ctx.fillStyle = COL.panel; ctx.font = '700 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(i + 1, x, y + 0.5); ctx.textBaseline = 'alphabetic';
+    });
+  }
+  if (ready) {
+    if (UI.hover) drawBroom(ctx, sx(UI.hover.shot.bx), sy(UI.hover.shot.by), team, 0.9);
+    else drawBroom(ctx, sx(UI.broom.x), sy(UI.broom.y), team);
+  }
+  drawMini();
+}
+function drawMini() {
+  const ctx = nctx, w = mini.width / DPR, h = mini.height / DPR, s = MSC;
+  const mx = x => (x + HW) * s, my = y => (y - SHEET_TOP) * s;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = COL.ice; ctx.fillRect(0, 0, w, h);
+  drawHouse(ctx, s, mx(0), my(0)); drawHouse(ctx, s, mx(0), my(NEAR + HOG));
+  ctx.strokeStyle = COL.blue; ctx.lineWidth = 2;
+  for (const y of [HOG, NEAR]) { ctx.beginPath(); ctx.moveTo(0, my(y)); ctx.lineTo(w, my(y)); ctx.stroke(); }
+  ctx.strokeStyle = COL.mark; ctx.globalAlpha = 0.5; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h); ctx.stroke(); ctx.globalAlpha = 1;
+  ctx.strokeStyle = COL.accent; ctx.lineWidth = 1.5; ctx.strokeRect(0.75, my(VIEW_TOP), w - 1.5, my(VIEW_BOT) - my(VIEW_TOP));
+  const live = UI.anim ? animFrame() : S.stones;
+  for (const st of live) { ctx.fillStyle = st.team ? COL.t1 : COL.t0; ctx.beginPath(); ctx.arc(mx(st.x), my(st.y), Math.max(2.2, R * s * 1.4), 0, 7); ctx.fill(); }
+  if (!UI.anim && !S.endOver) {
+    ctx.save(); ctx.setLineDash([2, 3]); ctx.strokeStyle = COL.mark; ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.moveTo(mx(0), my(NEAR)); ctx.lineTo(mx(UI.broom.x), my(UI.broom.y)); ctx.stroke(); ctx.restore();
+  }
+}
+function drawThumb(cv, stones) {
+  const d = 2 * DPR; cv.width = 56 * d / 2; cv.height = 56 * d / 2;
+  const c = cv.getContext('2d'), s = cv.width / (2 * (HOUSE + 0.35));
+  c.fillStyle = COL.ice; c.fillRect(0, 0, cv.width, cv.height);
+  drawHouse(c, s, cv.width / 2, cv.height / 2);
+  for (const st of stones) { c.fillStyle = st.team ? COL.t1 : COL.t0; c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 1; c.beginPath(); c.arc(cv.width / 2 + st.x * s, cv.height / 2 + st.y * s, R * s, 0, 7); c.fill(); c.stroke(); }
+}
+
+// ---------- weight dial ----------
+const DIAL = { cx: 120, cy: 112, r: 80 };
+const dAng = u => (135 + 270 * u) * Math.PI / 180;
+const dPt = (u, r) => [DIAL.cx + r * Math.cos(dAng(u)), DIAL.cy + r * Math.sin(dAng(u))];
+function arcD(u0, u1, r) { const [x0, y0] = dPt(u0, r), [x1, y1] = dPt(u1, r); return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${(u1 - u0) * 270 > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; }
+function buildDial() {
+  const svg = $('#dial'); const { r } = DIAL;
+  let h = `<path class="track" d="${arcD(0, 1, r)}"/>`;
+  for (const [a, b, c] of [[0, 0.30, 'z-guard'], [0.30, 0.62, 'z-house'], [0.62, 0.72, 'z-board'], [0.72, 1, 'z-hit']]) h += `<path class="zone ${c}" d="${arcD(a + 0.004, b - 0.004, r)}"/>`;
+  for (const [u, t] of [[0.15, 'Guard'], [0.46, 'House'], [0.67, 'Board'], [0.81, 'Control'], [0.95, 'Peel']]) {
+    const [x, y] = dPt(u, r + 14), anc = x > DIAL.cx + 25 ? 'start' : x < DIAL.cx - 25 ? 'end' : 'middle';
+    h += `<text class="tick-l" x="${x.toFixed(1)}" y="${(y + (anc === 'middle' ? -2 : 4)).toFixed(1)}" text-anchor="${anc}">${t}</text>`;
+  }
+  h += `<text class="num" id="dNum" x="${DIAL.cx}" y="${DIAL.cy + 8}" text-anchor="middle"></text>`;
+  h += `<text class="cap" x="${DIAL.cx}" y="${DIAL.cy + 26}" text-anchor="middle">hog to hog</text>`;
+  h += `<text class="zl" id="dZone" x="${DIAL.cx}" y="${DIAL.cy - 30}" text-anchor="middle"></text>`;
+  h += `<circle class="knob" id="dKnob" r="11"/>`;
+  svg.innerHTML = h;
+  let dragging = false;
+  const setFrom = e => {
+    const rc = svg.getBoundingClientRect(), x = (e.clientX - rc.left) * 280 / rc.width - 20 - DIAL.cx, y = (e.clientY - rc.top) * 200 / rc.height - DIAL.cy;
+    let deg = Math.atan2(y, x) * 180 / Math.PI; deg = (deg + 360) % 360;
+    let rel = (deg - 135 + 360) % 360;
+    let u = rel > 270 ? (UI.u > 0.5 ? 1 : 0) : rel / 270;
+    if (Math.abs(u - UI.u) > 0.5) u = UI.u > 0.5 ? 1 : 0;
+    setWeight(u);
+  };
+  svg.addEventListener('pointerdown', e => { if (controlsLocked()) return; dragging = true; svg.setPointerCapture(e.pointerId); setFrom(e); });
+  svg.addEventListener('pointermove', e => { if (dragging) setFrom(e); });
+  svg.addEventListener('pointerup', () => { dragging = false; });
+  svg.addEventListener('keydown', e => {
+    if (controlsLocked()) return;
+    const step = { ArrowRight: 0.004, ArrowUp: 0.004, ArrowLeft: -0.004, ArrowDown: -0.004, PageUp: 0.04, PageDown: -0.04 }[e.key];
+    if (step) { e.preventDefault(); setWeight(UI.u + step); }
+  });
+  svg.addEventListener('wheel', e => { if (controlsLocked()) return; e.preventDefault(); setWeight(UI.u - Math.sign(e.deltaY) * 0.004); }, { passive: false });
+}
+function setWeight(u) { UI.u = clamp(u, 0, 1); UI.hover = null; renderDial(); updatePreview(); save(); }
+function stepTime(dir) {
+  const v = vFromU(UI.u), T = hogTime(v);
+  if (T == null) { setWeight(UI.u + dir * 0.004); return; }
+  setWeight(uFromV(vFromHogTime(T - dir * 0.1)));
+}
+function renderDial() {
+  const v = vFromU(UI.u), T = hogTime(v), [kx, ky] = dPt(UI.u, DIAL.r);
+  $('#dKnob').setAttribute('cx', kx.toFixed(1)); $('#dKnob').setAttribute('cy', ky.toFixed(1));
+  $('#dNum').textContent = T == null ? '—' : T.toFixed(1) + 's';
+  const zone = weightName(v); $('#dZone').textContent = zone;
+  $('#dial').setAttribute('aria-valuenow', Math.round(UI.u * 100));
+  $('#dial').setAttribute('aria-valuetext', (T == null ? 'Too light' : T.toFixed(1) + ' seconds hog to hog') + ', ' + zone);
+  const y = stopY(v); let d;
+  if (y > HOG - R) d = 'Too light to clear the hog line';
+  else if (y > HOUSE + R) d = `Stops about ${(y - HOUSE).toFixed(1)} m in front of the house`;
+  else if (y >= -HOUSE - R) d = Math.abs(y) < 0.05 ? 'Stops on the tee line' : `Stops about ${Math.abs(y).toFixed(2)} m ${y > 0 ? 'short of' : 'past'} the tee line`;
+  else if (y >= HACK) d = 'Through the house, stops before the hack';
+  else d = `Takeout weight, ${(v).toFixed(2)} m/s at the hog line`;
+  $('#wdesc').textContent = d;
+}
+
+// ---------- preview ----------
+let pvQueued = false;
+function updatePreview() {
+  if (pvQueued) return; pvQueued = true;
+  requestAnimationFrame(() => {
+    pvQueued = false;
+    if (S && !UI.anim && !S.endOver && (UI.showPath || UI.hover)) {
+      const sh = UI.hover ? { ...UI.hover.shot } : mkShot(throwingTeam(), UI.broom.x, UI.u, UI.spin, UI.broom.y);
+      sh.team = throwingTeam(); sh.id = -9;
+      UI.preview = resolveShot(S.stones, sh, S.shotNo, true);
+    } else UI.preview = null;
+    draw();
+  });
+}
+
+// ---------- pointer on the sheet ----------
+function stoneAt(x, y) { let best = null, bd = R * 1.15; for (const s of S.stones) { const d = Math.hypot(s.x - x, s.y - y); if (d < bd) { bd = d; best = s; } } return best; }
+// Default the handle so the stone curls back toward the center: broom left of center (the skip's right,
+// facing the thrower) → in-turn; broom right → out-turn. It only changes when the broom moves to the other
+// side of the center line, so small adjustments never flip a handle you chose.
+const broomSide = x => x < -0.03 ? -1 : x > 0.03 ? 1 : 0;
+function autoTurn(prevX) {
+  const side = broomSide(UI.broom.x);
+  if (side && side !== broomSide(prevX)) { UI.spin = side < 0 ? 1 : -1; renderControls(); }
+}
+function evPos(e) { const rc = main.getBoundingClientRect(); return [wx(e.clientX - rc.left), wy(e.clientY - rc.top)]; }
+function edited() { UI.sugs = null; renderAll(); save(); }
+main.addEventListener('pointerdown', e => {
+  if (UI.anim) { skipAnim(); return; }
+  if (UI.busy || S.gameOver) return;
+  const [x, y] = evPos(e); main.setPointerCapture(e.pointerId);
+  const t = UI.tool;
+  if (t === 'broom') { if (S.endOver || isCpuTurn()) return; UI.hover = null; UI.drag = { kind: 'broom' }; const px = UI.broom.x; UI.broom = { x: clamp(x, -HW, HW), y: clamp(y, VIEW_TOP, VIEW_BOT) }; autoTurn(px); renderBroomRead(); updatePreview(); }
+  else if (t === 'move') { const s = stoneAt(x, y); if (s) UI.drag = { kind: 'stone', s }; }
+  else if (t === 'add0' || t === 'add1') {
+    if (Math.abs(x) > HW - R || y > HOG + R) return;
+    const s = { id: S.nextId++, team: +t[3], x, y, ang: Math.random() * 6 }; S.stones.push(s); UI.drag = { kind: 'stone', s }; edited();
+  }
+  else if (t === 'erase') { const s = stoneAt(x, y); if (s) { S.stones = S.stones.filter(o => o !== s); edited(); } }
+  else if (t === 'pen') { const st = [[x, y]]; UI.markup.push(st); UI.drag = { kind: 'pen', st }; }
+});
+main.addEventListener('pointermove', e => {
+  const d = UI.drag; if (!d) return; const [x, y] = evPos(e);
+  if (d.kind === 'broom') { const px = UI.broom.x; UI.broom = { x: clamp(x, -HW, HW), y: clamp(y, VIEW_TOP, VIEW_BOT) }; autoTurn(px); renderBroomRead(); updatePreview(); }
+  else if (d.kind === 'stone') { d.s.x = clamp(x, -HW + R, HW - R); d.s.y = clamp(y, BACK - R + 0.01, HOG + R); UI.sugs = null; updatePreview(); renderRead(); }
+  else if (d.kind === 'pen') { d.st.push([x, y]); draw(); }
+});
+main.addEventListener('pointerup', () => { const d = UI.drag; UI.drag = null; if (d && (d.kind === 'stone' || d.kind === 'broom')) { save(); if (d.kind === 'stone') edited(); } });
+
+// ---------- throwing ----------
+function controlsLocked() { return !!UI.anim || UI.busy || S.endOver || S.gameOver || isCpuTurn(); }
+function canSweep() { const A = UI.anim; return !!A && !A.isCpu && !A.sim.done; }
+function doThrow(isCpu) {
+  if (UI.anim || S.endOver || S.gameOver) return;
+  const team = throwingTeam();
+  const base = mkShot(team, UI.broom.x, UI.u, UI.spin, UI.broom.y);
+  const lv = LEVELS[isCpu ? UI.set.cpu : UI.set.you];
+  const sh = (lv.v || lv.x) ? perturb(base, lv, Math.random) : base;
+  sh.id = S.nextId++; sh.ang0 = Math.random() * 6;
+  UI.preview = null; UI.hover = null; UI.sugs = null;
+  UI.anim = { sim: createSim(S.stones, sh, false), before: S.stones, shotNo: S.shotNo, team, isCpu, called: base, last: performance.now(), clock: 0, prev: null, prevT: 0 };
+  toast(isCpu ? `<b>${TEAM[team]}</b> throws stone ${S.shotNo + 1}.` : `<b>${TEAM[team]}</b> throws stone ${S.shotNo + 1}. Hold <b>Sweep</b> (or Space) to carry it farther and straighter.`);
+  renderAll();
+  if (!PLAY[UI.set.playback]) { finishAnim(); return; }
+  requestAnimationFrame(animStep);
+}
+function animStep(now) {
+  const A = UI.anim; if (!A) return;
+  const dt = Math.min(0.05, (now - A.last) / 1000); A.last = now;
+  const sp = PLAY[UI.set.playback] || PLAY.fast, sim = A.sim;
+  // playback runs on its own clock; physics steps vary in length (0.01–0.15 s), so step only until the
+  // simulation is just ahead of the clock and draw positions interpolated between the last two steps
+  A.clock += dt * (sim.thrown.y > VIEW_BOT + 0.4 ? sp.out : sp.inn);
+  const sweep = UI.sweeping && canSweep();
+  while (!sim.done && sim.time < A.clock) {
+    A.prev = sim.bodies.flatMap(b => [b.x, b.y, b.ang]); A.prevT = sim.time;
+    stepSim(sim, sweep);
+  }
+  renderSweepBtn();
+  if (sim.done && A.clock >= sim.time) { finishAnim(); return; }
+  draw(); requestAnimationFrame(animStep);
+}
+function skipAnim() { if (UI.anim) finishAnim(); }
+function snapshot() { const { hist, ...rest } = S; return JSON.parse(JSON.stringify(rest)); }
+function finishAnim() {
+  const A = UI.anim; if (!A) return;
+  while (!A.sim.done) stepSim(A.sim, false);
+  UI.anim = null; UI.sweeping = false;
+  const res = finalizeShot(A.before, A.sim, A.shotNo), team = A.team;
+  S.hist.push(snapshot());
+  S.stones = res.stones; S.sample = false;
+  const handle = A.called.spin > 0 ? 'in-turn' : 'out-turn';
+  const T = hogTime(A.called.v0), swept = A.sim.swept;
+  S.log.push({ n: S.shotNo + 1, team, label: res.label, call: `${handle}, ${weightName(A.called.v0).toLowerCase()}${T ? ' (' + T.toFixed(1) + ' s)' : ''}${swept > 0.05 ? ` · swept ${swept.toFixed(1)} s` : ''}`, stones: res.stones.map(s => ({ team: s.team, x: s.x, y: s.y })) });
+  S.shotNo++; UI.pick = null;
+  let msg = `<b>${TEAM[team]}:</b> ${res.label}${swept > 0.05 ? ` (swept ${swept.toFixed(1)} s)` : ''}.`;
+  if (res.violation) msg += ' The stones go back where they were and the delivered stone is removed.';
+  toast(msg);
+  if (S.shotNo >= 16) S.endOver = true;
+  save(); renderAll(); afterTurn();
+}
+function afterTurn() {
+  if (S.endOver) { showEndBanner(); return; }
+  if (isCpuTurn()) cpuMove();
+}
+
+// ---------- computer ----------
+function ctxFor(team) { return { stones: S.stones, shotNo: S.shotNo, hammer: S.hammer, team, H: lastEnd() || S.mode === 'practice' ? 0 : 0.6 }; }
+function setThinking(t) { const el = $('#thinking'); el.hidden = !t; el.textContent = t; }
+async function cpuMove() {
+  const token = ++UI.aiToken; UI.busy = true; renderAll();
+  setThinking(`Computer is reading the ice… 0%`);
+  await tick();
+  const res = await findShots(ctxFor(S.cpuTeam), p => setThinking(`Computer is reading the ice… ${Math.round(p * 100)}%`), () => token === UI.aiToken);
+  if (token !== UI.aiToken || !res) return;
+  const pick = res[0];
+  UI.broom = { x: pick.shot.bx, y: pick.shot.by }; UI.u = pick.shot.u; UI.spin = pick.shot.spin;
+  setThinking(`Computer calls: ${pick.res.label}`);
+  renderAll();
+  await new Promise(r => setTimeout(r, UI.set.playback === 'instant' ? 250 : 1100));
+  if (token !== UI.aiToken) return;
+  UI.busy = false; setThinking('');
+  doThrow(true);
+}
+async function suggest() {
+  if (controlsLocked()) return;
+  const token = ++UI.aiToken; UI.busy = true;
+  const area = $('#sugArea');
+  area.innerHTML = `<div class="note">Testing about 1,000 calls, then checking the opponent's best reply…</div><div class="progress"><i id="sugBar"></i></div>`;
+  renderControls();
+  const team = throwingTeam();
+  const res = await findShots(ctxFor(team), p => { const b = $('#sugBar'); if (b) b.style.width = (p * 100) + '%'; }, () => token === UI.aiToken);
+  UI.busy = false;
+  if (token !== UI.aiToken || !res) { renderAll(); return; }
+  UI.sugs = pickSuggestions(res); UI.sugFor = S.shotNo;
+  renderAll();
+}
+function applySug(c) {
+  UI.broom = { x: c.shot.bx, y: c.shot.by }; UI.u = c.shot.u; UI.spin = c.shot.spin; UI.hover = null;
+  UI.showPath = true; $('#showPath').checked = true;
+  renderAll(); updatePreview(); save();
+}
+
+// ---------- ends & games ----------
+function showEndBanner() {
+  const b = $('#banner'), sc = scoreOf(S.stones);
+  let big, sub, btn;
+  if (S.mode === 'practice') {
+    big = sc.pts ? `${TEAM[sc.team]} would score ${sc.pts}` : 'Blank end';
+    sub = 'Practice mode doesn’t keep score.'; btn = '<button class="btn primary" id="bNext">Reset the end</button>';
+  } else {
+    big = sc.pts ? `${TEAM[sc.team]} scores ${sc.pts}` : 'Blank end';
+    sub = sc.pts ? `${TEAM[1 - sc.team]} gets the hammer.` : `${TEAM[S.hammer]} keeps the hammer.`;
+    btn = `<button class="btn primary" id="bNext">${S.end + 1 >= S.nEnds ? 'Finish' : 'Start end ' + (S.end + 2)}</button>`;
+  }
+  b.innerHTML = `<div class="big">${big}</div><div class="note">${sub}</div><div class="row">${btn}<button class="btn" id="bUndo">Undo last shot</button></div>`;
+  b.hidden = false;
+  $('#bNext').onclick = nextEnd; $('#bUndo').onclick = undo;
+}
+function nextEnd() {
+  $('#banner').hidden = true;
+  const sc = scoreOf(S.stones);
+  if (S.mode !== 'practice') {
+    const t = sc.pts ? sc.team : -1;
+    S.scores[0][S.end] = t === 0 ? sc.pts : 0; S.scores[1][S.end] = t === 1 ? sc.pts : 0;
+    if (sc.pts) S.hammer = 1 - sc.team;
+    S.end++;
+    if (S.end >= S.nEnds) {
+      if (totals(0) === totals(1)) { S.nEnds++; S.scores[0].push(null); S.scores[1].push(null); toast('Tied after regulation. Extra end!'); }
+      else S.gameOver = true;
+    }
+  }
+  S.stones = []; S.shotNo = 0; S.log = []; S.hist = []; S.endOver = false; UI.sugs = null; UI.markup = [];
+  save(); renderAll();
+  if (S.gameOver) {
+    const w = totals(0) > totals(1) ? 0 : 1, b = $('#banner');
+    b.innerHTML = `<div class="big">${TEAM[w]} wins ${Math.max(totals(0), totals(1))}–${Math.min(totals(0), totals(1))}</div><div class="row"><button class="btn primary" id="bNew">New game</button></div>`;
+    b.hidden = false; $('#bNew').onclick = openNew; return;
+  }
+  if (isCpuTurn()) cpuMove();
+}
+function undo() {
+  if (UI.anim) return;
+  UI.aiToken++; UI.busy = false; setThinking('');
+  if (!S.hist.length) { toast('Nothing to undo in this end.'); renderAll(); return; }
+  const hist = S.hist;
+  let snap = hist.pop();
+  S = Object.assign(snap, { hist });
+  if (S.mode === 'cpu') while (throwingTeam() === S.cpuTeam && S.hist.length) { const h = S.hist; S = Object.assign(h.pop(), { hist: h }); }
+  $('#banner').hidden = true; UI.sugs = null;
+  toast('Shot undone.'); save(); renderAll(); updatePreview();
+  if (isCpuTurn()) cpuMove();
+}
+function randomScenario() {
+  UI.aiToken++; UI.busy = false; setThinking(''); $('#banner').hidden = true;
+  const r = Math.random;
+  S.stones = []; S.log = []; S.hist = []; S.endOver = false; S.sample = false; UI.markup = [];
+  let k = 6 + Math.floor(r() * 9);
+  if (S.mode === 'cpu') { S.shotNo = k; if (throwingTeam() === S.cpuTeam) k = k < 15 ? k + 1 : k - 1; }
+  S.shotNo = k;
+  const thrown = [0, 1].map(t => t === firstTeam() ? Math.ceil(k / 2) : Math.floor(k / 2));
+  for (const t of [0, 1]) {
+    const n = Math.round(thrown[t] * (0.35 + r() * 0.45));
+    for (let i = 0; i < n; i++) for (let tries = 0; tries < 40; tries++) {
+      let x, y;
+      if (r() < 0.68) { const d = Math.sqrt(r()) * (HOUSE + 0.05), a = -Math.PI / 2 + (r() - 0.5) * Math.PI * 1.6; x = d * Math.cos(a) * 1.05; y = d * Math.sin(a) * -1; y = r() < 0.7 ? Math.abs(y) * (r() < 0.5 ? 1 : -1) : y; }
+      else { x = (r() - 0.5) * 2.8; y = 2.3 + r() * 3.6; }
+      if (Math.abs(x) > HW - R || y < BACK) continue;
+      if (S.stones.some(s => Math.hypot(s.x - x, s.y - y) < 2 * R + 0.02)) continue;
+      S.stones.push({ id: S.nextId++, team: t, x, y, ang: r() * 6 }); break;
+    }
+  }
+  UI.sugs = null; toast(`Random scenario: stone ${S.shotNo + 1}, ${TEAM[throwingTeam()]} to throw.`);
+  save(); renderAll(); updatePreview();
+  if (isCpuTurn()) cpuMove();
+}
+
+// ---------- new game modal ----------
+const NG = { mode: 'cpu', side: 0, hammer: '1', ends: 8 };
+function openNew() { $('#newModal').hidden = false; $('#ngStart').focus(); }
+function wireOpts(id, key, conv = v => v) {
+  $(id).addEventListener('click', e => {
+    const b = e.target.closest('.opt'); if (!b) return;
+    NG[key] = conv(b.dataset.v);
+    $(id).querySelectorAll('.opt').forEach(o => o.setAttribute('aria-pressed', o === b));
+    $('#ngSideWrap').hidden = NG.mode !== 'cpu';
+  });
+}
+wireOpts('#ngMode', 'mode'); wireOpts('#ngSide', 'side', Number); wireOpts('#ngHammer', 'hammer'); wireOpts('#ngEnds', 'ends', Number);
+$('#ngCancel').onclick = () => { $('#newModal').hidden = true; };
+$('#ngStart').onclick = () => {
+  $('#newModal').hidden = true;
+  UI.aiToken++; UI.busy = false; setThinking(''); $('#banner').hidden = true;
+  const hammer = NG.hammer === 'coin' ? (Math.random() < 0.5 ? 0 : 1) : Number(NG.hammer);
+  S = newState({ mode: NG.mode, cpuTeam: 1 - NG.side, hammer, nEnds: NG.ends });
+  UI.sugs = null; UI.markup = []; UI.pick = null;
+  toast(NG.hammer === 'coin' ? `Coin toss: ${TEAM[hammer]} has the hammer.` : `New game. ${TEAM[firstTeam()]} throws first.`);
+  save(); renderAll(); updatePreview();
+  if (isCpuTurn()) cpuMove();
+};
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#newModal').hidden = true; });
+
+// ---------- rendering panels ----------
+function toast(h) { $('#toast').innerHTML = h; }
+function renderStatus() {
+  const team = throwingTeam();
+  const modeName = { cpu: 'vs computer', friend: 'vs a friend', practice: 'Practice' }[S.mode];
+  let h = '';
+  if (S.mode !== 'practice') h += `<span class="mini-score"><span class="chip t0"></span>${totals(0)}<span style="color:var(--muted)">–</span>${totals(1)}<span class="chip t1" style="margin:0 0 0 6px"></span></span>`;
+  if (S.gameOver) h += `<span><b>Final</b></span>`;
+  else h += `<span>End <b>${S.end + 1}</b>${S.mode === 'practice' ? '' : ' of ' + S.nEnds} · Stone <b>${Math.min(16, S.shotNo + 1)}</b> of 16 · ${S.endOver ? 'End complete' : `<b>${TEAM[team]}</b> to throw`}</span>`;
+  h += `<span>${modeName}${S.sample ? ' · sample position' : ''}</span>`;
+  $('#status').innerHTML = h;
+  $('#modePill').textContent = modeName;
+}
+function renderScoreboard() {
+  const n = S.nEnds; let h = '<thead><tr><th class="tn">Team</th>';
+  for (let i = 0; i < n; i++) h += `<th class="${i === S.end && !S.gameOver ? 'cur' : ''}">${i + 1}</th>`;
+  h += '<th>T</th></tr></thead><tbody>';
+  for (const t of [0, 1]) {
+    h += `<tr><th class="tn"><span class="chip t${t}"></span>${TEAM[t]}${S.hammer === t && !S.gameOver ? hammerSvg : ''}${S.mode === 'cpu' ? `<span style="color:var(--muted);font-weight:500"> ${t === S.cpuTeam ? '(CPU)' : '(you)'}</span>` : ''}</th>`;
+    for (let i = 0; i < n; i++) h += `<td class="${i === S.end && !S.gameOver ? 'cur' : ''}">${S.scores[t][i] ?? ''}</td>`;
+    h += `<td class="tot">${totals(t)}</td></tr>`;
+  }
+  $('#scoreboard').innerHTML = h + '</tbody>';
+  let r = '';
+  for (const t of [0, 1]) {
+    const left = stonesLeft(t); let dots = '';
+    for (let i = 0; i < 8; i++) dots += `<span class="dot t${t} ${i < left ? 'on' : ''}"></span>`;
+    r += `<span>${TEAM[t]}</span><span class="dots" aria-label="${left} stones left">${dots}</span>`;
+  }
+  $('#rocksLeft').innerHTML = r;
+}
+function renderRead() {
+  const sc = scoreOf(S.stones), el = $('#read');
+  let h = sc.pts ? `<div class="big"><span class="chip t${sc.team}"></span>${TEAM[sc.team]} is sitting ${sc.pts}</div>` : `<div class="big">Nobody is counting</div>`;
+  const parts = [`${TEAM[S.hammer]} has the hammer`];
+  if (S.shotNo < 5) parts.push(`<span class="pill fgz">Free guard zone protected until stone 6</span>`);
+  h += `<div class="note">${parts.join(' · ')}</div>`;
+  if (sc.list.length) {
+    h += '<ol class="meas">';
+    sc.list.slice(0, 6).forEach((e, i) => {
+      const counting = i < sc.pts;
+      h += `<li><span class="rk">${i + 1}</span><span class="${counting ? 'cnt' : ''}"><span class="chip t${e.s.team}"></span>${TEAM[e.s.team]}${counting ? ' · counting' : ''}</span><span>${(e.d * 100).toFixed(0)} cm</span></li>`;
+    });
+    h += '</ol><div class="note">Distance from the pin to the stone’s center.</div>';
+  }
+  el.innerHTML = h;
+}
+function renderSugs() {
+  const area = $('#sugArea');
+  if (UI.busy && !isCpuTurn()) return;
+  if (!UI.sugs || UI.sugFor !== S.shotNo) { area.innerHTML = `<p class="note">Suggest a shot reads the position for ${TEAM[throwingTeam()]}, tests about a thousand calls, and checks the opponent's best answer to each.</p>`; return; }
+  let h = '<div class="sugs">';
+  UI.sugs.forEach((c, i) => {
+    const T = hogTime(c.shot.v0);
+    const val = c.score >= 0 ? '+' + c.score.toFixed(2) : c.score.toFixed(2);
+    const dcls = { Easy: 'easy', Moderate: 'mod', Hard: 'hard', 'Very hard': 'vhard' }[c.difficulty] || 'mod';
+    h += `<button class="sug" data-i="${i}"><span class="n">${c.alt ? '\u2022' : i + 1}</span><span class="t">${c.res.label}</span><span class="v">${val}</span>
+      <span class="d tags"><span class="pill">${c.alt ? 'Alternative ' + c.cat.toLowerCase() : c.cat}</span><span class="pill diff ${dcls}">${c.difficulty}</span><span>makes it ${Math.round(c.make * 100)}%</span></span>
+      <span class="d">${c.shot.spin > 0 ? 'In-turn' : 'Out-turn'} · ${weightName(c.shot.v0)}${T ? ' ' + T.toFixed(1) + ' s' : ''} · broom ${Math.abs(c.shot.bx).toFixed(2)} m ${c.shot.bx < 0 ? 'left' : 'right'}${c.reply ? `<br>Likely reply: ${c.reply.toLowerCase()}` : ''}</span></button>`;
+  });
+  h += `</div><p class="note">Rating is a points estimate for ${TEAM[throwingTeam()]} after the opponent’s best reply, averaged over a competitive thrower’s misses. Difficulty is how often that thrower makes the shot. Hover to preview the path, click to load the call.</p>`;
+  area.innerHTML = h;
+  area.querySelectorAll('.sug').forEach(b => {
+    const c = UI.sugs[+b.dataset.i];
+    b.addEventListener('mouseenter', () => { if (controlsLocked()) return; UI.hover = c; updatePreview(); });
+    b.addEventListener('mouseleave', () => { UI.hover = null; updatePreview(); });
+    b.addEventListener('click', () => applySug(c));
+  });
+}
+function renderHistory() {
+  const el = $('#history');
+  if (!S.log.length) { el.innerHTML = `<li class="empty">No stones thrown yet this end.</li>`; return; }
+  el.innerHTML = S.log.slice().reverse().map((l, i) => `<li><canvas data-i="${S.log.length - 1 - i}"></canvas><div><div class="who"><span class="chip t${l.team}"></span>Stone ${l.n} · ${TEAM[l.team]}</div><div>${l.label}</div><div class="sub">Called ${l.call}</div></div></li>`).join('');
+  el.querySelectorAll('canvas').forEach(cv => drawThumb(cv, S.log[+cv.dataset.i].stones));
+}
+function renderBroomRead() {
+  const b = UI.broom;
+  const side = Math.abs(b.x) < 0.03 ? 'on the center line' : `${Math.abs(b.x).toFixed(2)} m ${b.x < 0 ? 'left' : 'right'} of center`;
+  const depth = Math.abs(b.y) < 0.05 ? 'on the tee line' : `${Math.abs(b.y).toFixed(2)} m ${b.y < 0 ? 'behind' : 'in front of'} the tee`;
+  $('#broomRead').textContent = `Broom: ${side}, ${depth}. ${UI.spin > 0 ? 'In-turn curls right.' : 'Out-turn curls left.'}`;
+}
+function renderSweepBtn() {
+  const b = $('#btnSweep'), ok = canSweep();
+  b.disabled = !ok; b.setAttribute('aria-pressed', ok && UI.sweeping);
+  $('#sweepLbl').textContent = !UI.anim ? 'Hold to sweep during a throw' : !ok ? 'Computer\u2019s stone' : UI.sweeping ? 'Sweeping!' : 'Hold to sweep';
+}
+function renderControls() {
+  renderSweepBtn();
+  const team = throwingTeam(), locked = controlsLocked();
+  $('#whoThrows').innerHTML = `<span class="chip t${team}"></span><b>${TEAM[team]}</b>&nbsp;stone ${Math.min(16, S.shotNo + 1)}`;
+  $('#pickTeam').hidden = S.mode !== 'practice';
+  $('#pickTeam').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.team === team));
+  $('#handle').querySelectorAll('button').forEach(b => { b.setAttribute('aria-pressed', +b.dataset.spin === UI.spin); b.disabled = locked; });
+  $('#wMinus').disabled = $('#wPlus').disabled = locked;
+  const tb = $('#btnThrow'); tb.disabled = locked;
+  tb.textContent = S.gameOver ? 'Game over' : S.endOver ? 'End complete' : isCpuTurn() ? 'Computer’s turn' : `Throw ${TEAM[team]}’s stone`;
+  $('#btnSuggest').disabled = locked;
+  $('#btnUndo').disabled = !!UI.anim || !S.hist.length;
+  $('#dial').style.opacity = locked ? 0.6 : 1;
+  $('#tools').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.tool === UI.tool));
+}
+function sweepGain() { // extra distance and curl removed when a guard-weight stone is swept all the way
+  const sh = mkShot(0, -ICE.curl, uFromV(Math.sqrt(2 * ICE.a * (NEAR - 4))), 1), a = simulate([], sh), b = createSim([], sh);
+  while (!b.done) stepSim(b, true);
+  return { dist: a.thrown.y - b.thrown.y, curl: a.thrown.x - b.thrown.x };
+}
+function renderIce() {
+  const g = sweepGain(), pct = Math.round(ICE.sweep * 100);
+  $('#sweepPow').value = ICE.sweep;
+  $('#sweepPowV').textContent = pct ? `${pct}% · swept full length: +${g.dist.toFixed(1)} m, ${Math.round(g.curl * 100)} cm less curl` : 'Off';
+  $('#iceSpeed').value = ICE.drawT; $('#iceSpeedV').textContent = ICE.drawT.toFixed(1) + ' s';
+  $('#iceCurl').value = ICE.curl; $('#iceCurlV').textContent = `${ICE.curl.toFixed(2)} m (${(ICE.curl / 0.3048).toFixed(1)} ft)`;
+  $('#youLvl').value = UI.set.you; $('#cpuLvl').value = UI.set.cpu; $('#playback').value = UI.set.playback;
+}
+function renderAll() { renderStatus(); renderScoreboard(); renderRead(); renderSugs(); renderHistory(); renderControls(); renderDial(); renderBroomRead(); draw(); }
+
+// ---------- wiring ----------
+const sweepOn = e => { if (!canSweep()) return; if (e && e.pointerId != null) $('#btnSweep').setPointerCapture(e.pointerId); UI.sweeping = true; renderSweepBtn(); };
+const sweepOff = () => { UI.sweeping = false; renderSweepBtn(); };
+$('#btnSweep').addEventListener('pointerdown', e => { e.preventDefault(); sweepOn(e); });
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => $('#btnSweep').addEventListener(ev, sweepOff));
+$('#btnSweep').addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', e => { if (e.code === 'Space' && UI.anim && !e.target.matches?.('input,select,textarea')) { e.preventDefault(); if (!e.repeat) sweepOn(); } });
+document.addEventListener('keyup', e => { if (e.code === 'Space') sweepOff(); });
+window.addEventListener('blur', sweepOff);
+$('#btnThrow').onclick = () => { if (!controlsLocked()) doThrow(false); };
+$('#btnSuggest').onclick = suggest;
+$('#btnUndo').onclick = undo;
+$('#btnNew').onclick = openNew;
+$('#btnRandom').onclick = randomScenario;
+$('#wMinus').onclick = () => stepTime(-1);
+$('#wPlus').onclick = () => stepTime(1);
+$('#handle').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || controlsLocked()) return; UI.spin = +b.dataset.spin; UI.hover = null; renderControls(); renderBroomRead(); updatePreview(); save(); });
+$('#pickTeam').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || controlsLocked()) return; UI.pick = +b.dataset.team; UI.sugs = null; renderAll(); updatePreview(); });
+$('#tools').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; UI.tool = b.dataset.tool; main.style.cursor = UI.tool === 'move' ? 'grab' : 'crosshair'; renderControls(); });
+$('#btnClearPen').onclick = () => { UI.markup = []; draw(); };
+$('#btnClearStones').onclick = () => { if (UI.anim || UI.busy) return; S.stones = []; edited(); updatePreview(); toast('Sheet cleared. Use the Add tools to set up a position.'); };
+$('#showPath').onchange = e => { UI.showPath = e.target.checked; updatePreview(); };
+$('#iceSpeed').oninput = e => { ICE.drawT = +e.target.value; calibrateIce(); UI.sugs = null; renderIce(); renderAll(); updatePreview(); save(); };
+$('#sweepPow').oninput = e => { ICE.sweep = +e.target.value; renderIce(); save(); };
+$('#iceCurl').oninput = e => { ICE.curl = +e.target.value; calibrateIce(); UI.sugs = null; renderIce(); renderAll(); updatePreview(); save(); };
+$('#youLvl').onchange = e => { UI.set.you = e.target.value; save(); };
+$('#cpuLvl').onchange = e => { UI.set.cpu = e.target.value; save(); };
+$('#playback').onchange = e => { UI.set.playback = e.target.value; save(); };
+document.addEventListener('keydown', e => {
+  if (e.target.matches?.('input,select,textarea') || !$('#newModal').hidden) return;
+  if (e.key === 't' || e.key === 'T') { if (!controlsLocked()) doThrow(false); }
+  else if (e.key === 'u' || e.key === 'U') undo();
+});
+const mq = matchMedia('(prefers-color-scheme: dark)');
+const retheme = () => { readColors(); makePebble(main.width / DPR, main.height / DPR); draw(); renderHistory(); };
+mq.addEventListener ? mq.addEventListener('change', retheme) : mq.addListener(retheme);
+new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+new ResizeObserver(() => layout()).observe($('.sheet-col'));
+
+// ---------- boot ----------
+readColors();
+if (!load()) S = sampleState();
+if (!S.hist) S.hist = [];
+calibrateIce();
+buildDial(); renderIce(); layout(); renderAll(); updatePreview();
+if (S.endOver) showEndBanner();
+else if (S.gameOver) { $('#banner').hidden = true; }
+else if (isCpuTurn()) cpuMove();
+if (S.sample) toast('Sample position: Red throws stone 11 and Yellow has the hammer. Place the broom, set the weight, and throw, or try <b>Suggest a shot</b>.');
+</script>
