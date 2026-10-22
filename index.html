@@ -132,7 +132,19 @@ button{cursor:pointer}
 .banner{position:absolute;inset:auto 12px 12px 12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;display:grid;gap:8px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
 .banner .big{font-family:var(--f-display);font-weight:700;font-size:26px;line-height:1.05}
 .banner .row{display:flex;gap:8px;flex-wrap:wrap}
-.sweep{min-width:min(320px,100%);justify-content:center;padding:12px 18px;font-size:15px;user-select:none;-webkit-user-select:none;touch-action:none}
+.sweeps{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:100%}
+.sweep{min-width:min(240px,100%);justify-content:center;padding:12px 16px;font-size:14px;user-select:none;-webkit-user-select:none;touch-action:none}
+.review{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:8px 10px;max-width:100%}
+.review .rvlbl{font-size:13px;min-width:0;padding:0 6px;text-align:center}
+.btn.danger{background:var(--red);color:var(--red-ink);border-color:var(--red)}
+.sharebox{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:10px;display:grid;gap:8px;width:min(420px,100%)}
+.sharebox img{max-width:100%;border-radius:6px;border:1px solid var(--line)}
+.sharebox input{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--soft);font-size:12.5px}
+.hist li.hitem{cursor:pointer;border-radius:8px;padding:3px}
+.hist li.hitem:hover,.hist li.hitem:focus-visible{background:var(--soft)}
+.hist li.sel{background:var(--accent-soft)}
+.sug .why{color:var(--ink)}
+.pill.played{background:var(--accent-soft);border-color:transparent}
 .sweep kbd{font:600 11px var(--f-body);border:1px solid currentColor;border-radius:4px;padding:1px 5px;opacity:.7}
 .sweep[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .toast{min-height:22px;text-align:center;font-size:13.5px;color:var(--muted);max-width:420px}
@@ -209,7 +221,7 @@ select{background:var(--panel);border:1px solid var(--line);border-radius:7px;pa
       <div id="sugArea"></div>
     </div>
     <div class="card">
-      <div class="card-h"><h2>This end</h2></div>
+      <div class="card-h"><h2>This end</h2><button class="btn small" id="btnReview">Review end</button></div>
       <ol class="hist" id="history"></ol>
     </div>
   </section>
@@ -228,7 +240,22 @@ select{background:var(--panel);border:1px solid var(--line);border-radius:7px;pa
         <button id="btnClearPen" title="Clear drawings">Clear drawing</button>
         <button id="btnClearStones" title="Remove every stone">Clear sheet</button>
       </div>
+      <div class="seg">
+        <button id="btnCopyLink" title="Copy a link that opens this position and your call">Copy link</button>
+        <button id="btnSaveImg" title="Save a picture of the house">Save image</button>
+      </div>
     </div>
+    <div class="review" id="reviewBar" hidden>
+      <button class="btn small" id="rvFirst" title="Start of the end" aria-label="Start of the end">|&#9664;</button>
+      <button class="btn small" id="rvPrev" title="Previous stone (Left arrow)" aria-label="Previous stone">&#9664;</button>
+      <span class="rvlbl" id="rvLbl"></span>
+      <button class="btn small" id="rvNext" title="Next stone (Right arrow)" aria-label="Next stone">&#9654;</button>
+      <button class="btn small" id="rvLast" title="Current position" aria-label="Current position">&#9654;|</button>
+      <button class="btn small primary" id="rvReplay">Replay</button>
+      <button class="btn small" id="rvResume">Play on from here</button>
+      <button class="btn small" id="rvExit">Back to live</button>
+    </div>
+    <div class="sharebox" id="shareBox" hidden></div>
     <div class="sheet" id="sheetWrap">
       <canvas id="mini" aria-label="Full sheet overview"></canvas>
       <div class="mainwrap" id="mainwrap">
@@ -237,9 +264,10 @@ select{background:var(--panel);border:1px solid var(--line);border-radius:7px;pa
         <div class="banner" id="banner" hidden></div>
       </div>
     </div>
-    <button class="btn sweep" id="btnSweep" disabled aria-pressed="false">
-      <svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><rect x="1" y="2" width="20" height="8" rx="4" fill="currentColor"/></svg>
-      <span id="sweepLbl">Hold to sweep</span><kbd>Space</kbd></button>
+    <div class="sweeps">
+      <button class="btn sweep" id="sweep0" disabled aria-pressed="false"><span class="chip t0"></span><span class="lbl">Red: hold to sweep</span><kbd>A</kbd></button>
+      <button class="btn sweep" id="sweep1" disabled aria-pressed="false"><span class="chip t1"></span><span class="lbl">Yellow: hold to sweep</span><kbd>L</kbd></button>
+    </div>
     <div class="toast" id="toast" aria-live="polite"></div>
   </section>
 
@@ -364,7 +392,7 @@ function createSim(stones, shot, rec) {
   const dx = shot.bx, dy = shot.by - NEAR, L = Math.hypot(dx, dy);
   const t = { id: shot.id, team: shot.team, x: 0, y: NEAR, vx: dx / L * shot.v0, vy: dy / L * shot.v0, spin: shot.spin, mv: true, out: false, ang: shot.ang0 || 0, thrown: true, moved: true, hit: false, reason: '', firstHit: null };
   bs.push(t);
-  const sim = { bodies: bs, thrown: t, frames: rec ? [] : null, time: 0, steps: 0, done: false, swept: 0 };
+  const sim = { bodies: bs, thrown: t, frames: rec ? [] : null, time: 0, steps: 0, done: false, sweptBy: [0, 0] };
   if (rec) snapSim(sim);
   return sim;
 }
@@ -373,6 +401,7 @@ function snapSim(sim) {
   for (let i = 0; i < n; i++) { const b = bs[i]; p[i * 3] = b.out ? NaN : b.x; p[i * 3 + 1] = b.y; p[i * 3 + 2] = b.ang; }
   sim.frames.push({ t: sim.time, p });
 }
+// sweep: per-body bitmask of the teams sweeping it (1 = red, 2 = yellow), or null
 function stepSim(sim, sweep) {
   if (sim.done) return;
   const bs = sim.bodies, t = sim.thrown, n = bs.length, a = ICE.a;
@@ -389,11 +418,12 @@ function stepSim(sim, sweep) {
   else gap = 0;
   // the step never lets the stone cover more than half its clearance, so it can't skip past a collision
   // fine steps keep each move to ~2.5 cm near other stones
-  const fine = sweep ? 0.01 : clamp(0.025 / (vmax + 1e-6), 0.01, 0.05);
-  const dt = gap > 1.4 && !sweep ? clamp((gap - 1.0) / (2 * (Math.hypot(t.vx, t.vy) + 0.05)), Math.max(fine, 0.04), 0.15) : fine;
+  const sweeping = !!sweep && sweep.some(Boolean);
+  const fine = sweeping ? 0.01 : clamp(0.025 / (vmax + 1e-6), 0.01, 0.05);
+  const dt = gap > 1.4 && !sweeping ? clamp((gap - 1.0) / (2 * (Math.hypot(t.vx, t.vy) + 0.05)), Math.max(fine, 0.04), 0.15) : fine;
   for (let i = 0; i < n; i++) {
     const b = bs[i]; if (!b.mv || b.out) continue;
-    const sw = sweep && b.thrown, ab = sw ? a * sweepFric() : a;
+    const m = sweep ? sweep[i] : 0, sw = m > 0, ab = sw ? a * sweepFric() : a;
     const v = Math.hypot(b.vx, b.vy);
     if (v <= ab * dt) { b.vx = b.vy = 0; b.mv = false; continue; }
     if (b.spin) {
@@ -404,7 +434,8 @@ function stepSim(sim, sweep) {
     const k = (v - ab * dt) / v; b.vx *= k; b.vy *= k;
     b.x += b.vx * dt; b.y += b.vy * dt;
     b.ang += (b.spin || 0) * 0.9 * dt;
-    if (sw) sim.swept += dt;
+    if (m & 1) sim.sweptBy[0] += dt;
+    if (m & 2) sim.sweptBy[1] += dt;
     if (Math.abs(b.x) > HW - R) { b.out = true; b.mv = false; b.reason = 'boards'; }
     else if (b.y < BACK - R) { b.out = true; b.mv = false; b.reason = 'back'; }
   }
@@ -434,8 +465,21 @@ function stepSim(sim, sweep) {
 }
 function simulate(stones, shot, rec) {
   const sim = createSim(stones, shot, rec);
-  while (!sim.done) stepSim(sim, false);
+  while (!sim.done) stepSim(sim, null);
   return sim;
+}
+function cloneSim(sim) {
+  const bodies = sim.bodies.map(b => ({ ...b }));
+  return { ...sim, bodies, thrown: bodies[bodies.length - 1], frames: null, sweptBy: [...sim.sweptBy] };
+}
+// Sweeping rules: in front of the tee line only a stone's own team may sweep it; past the tee line either
+// team may. Each team sweeps one stone: the delivered stone if it can, otherwise its fastest eligible stone.
+function sweepTarget(sim, team) {
+  const bs = sim.bodies, ok = b => b.mv && !b.out && (b.team === team || b.y < 0);
+  if (ok(sim.thrown)) return bs.length - 1;
+  let best = -1, bv = 0;
+  bs.forEach((b, i) => { if (ok(b)) { const v = Math.hypot(b.vx, b.vy); if (v > bv) { bv = v; best = i; } } });
+  return best;
 }
 
 function calibrateIce() {
@@ -649,6 +693,50 @@ async function findShots(ctx, onProg = () => {}, alive = () => true) {
   onProg(1);
   return top;
 }
+// Should the computer sweep right now? Play the rest of the throw out three ways (no sweeping, a short
+// burst, sweeping to the end) and sweep if either sweeping option leaves the computer better off.
+function cpuWantsSweep(sim, team, before, shotNo, hammer, H) {
+  const i = sweepTarget(sim, team); if (i < 0) return false;
+  const run = burst => {
+    const c = cloneSim(sim), m = new Uint8Array(c.bodies.length), t0 = c.time;
+    while (!c.done) { m[i] = burst && c.time - t0 < burst ? 1 << team : 0; stepSim(c, m); }
+    return evaluate(finalizeShot(before, c, shotNo).stones, team, shotNo + 1, hammer, H);
+  };
+  return Math.max(run(0.6), run(1e9)) > run(0) + 0.02;
+}
+// One-line reason for a suggested call, from hammer, cover and the count it leaves.
+function explainShot(c, ctx) {
+  const { stones, shotNo, hammer, team } = ctx, after = c.res.stones, t = c.res.sim.thrown;
+  const hasHammer = team === hammer, last = shotNo >= 15, left = 15 - shotNo;
+  const b0 = scoreOf(stones), b1 = scoreOf(after);
+  const mine = b1.team === team ? b1.pts : 0, theirs = b1.team === 1 - team ? b1.pts : 0;
+  let why;
+  if (c.cat === 'Guard') {
+    const center = Math.abs(t.x) < 0.6;
+    if (coversOwn(t, after)) why = 'Guards your stone in the house so it\u2019s hard to remove.';
+    else if (center && !hasHammer) why = 'Without hammer, a center guard blocks the middle so you can steal or force them to take one.';
+    else if (!center && hasHammer) why = 'With hammer, a corner guard keeps the middle open and sets up a side to score two.';
+    else if (center) why = 'Blocks the middle and makes their draws harder.';
+    else why = 'Sets up a corner for a come-around later.';
+  } else if (c.cat === 'Draw') {
+    if (covered(t, after)) why = 'Comes around behind cover, where it\u2019s hard to hit.';
+    else if (last) why = mine ? `Last rock: draws for ${mine}.` : 'Last rock: draws in to cut down their count.';
+    else if (b1.team === team && b1.list[0].s.id === t.id) why = left > 6 ? 'Draws for shot rock early and puts the pressure on them.' : 'Draws for shot rock.';
+    else why = 'Adds a stone in the rings without bringing their stones into play.';
+  } else if (c.cat === 'Takeout') {
+    const removedShot = b0.team === 1 - team && !after.some(x => x.id === b0.list[0].s.id);
+    if (hasHammer && !after.some(inHouse) && left <= 1) why = 'Clears the house to blank the end and keep hammer.';
+    else if (/^Double/.test(c.res.label)) why = 'Removes two of their stones in one shot.';
+    else if (removedShot) why = 'Takes out their shot rock.';
+    else why = 'Removes one of theirs to keep the house simple.';
+  } else if (c.cat === 'Tap / raise') {
+    why = /^Raise/.test(c.res.label) ? 'Promotes your stone into a scoring spot.' : mine ? 'Moves their stone back so yours sit shot.' : 'Moves their stone without risking a full takeout.';
+  } else why = 'Changes the position in your favour.';
+  const tail = [];
+  if (!last) tail.push(mine ? `Leaves you sitting ${mine}` : theirs ? `They\u2019d still sit ${theirs}` : 'Leaves nobody counting');
+  if (c.make < 0.45) tail.push(`risky: makes it ${Math.round(c.make * 100)}%`);
+  return why + (tail.length ? ' ' + tail.join('; ') + '.' : '');
+}
 // Top three by rating, plus the best draw / guard / takeout when it's a reasonable alternative.
 function pickSuggestions(list) {
   const out = [];
@@ -671,7 +759,7 @@ const PLAY = { real: { out: 1, inn: 1 }, fast: { out: 5, inn: 1.7 }, instant: nu
 const hammerSvg = '<span class="hammer" title="Hammer (last stone)"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2" width="9" height="5" rx="1" fill="currentColor"/><rect x="5" y="6" width="2.4" height="9" rx="1" fill="currentColor"/></svg></span>';
 
 let S = null;
-const UI = { tool: 'broom', sweeping: false, broom: { x: -0.7, y: 0 }, u: 0.45, spin: 1, pick: null, showPath: false, anim: null, busy: false,
+const UI = { tool: 'broom', sweeping: [false, false], review: null, sugCtx: null, broom: { x: -0.7, y: 0 }, u: 0.45, spin: 1, pick: null, showPath: false, anim: null, busy: false,
   sugs: null, sugFor: -1, hover: null, preview: null, markup: [], drag: null, aiToken: 0, thinking: '',
   set: { playback: 'fast', you: 'perfect', cpu: 'competitive' } };
 
@@ -696,6 +784,18 @@ function throwingTeam() {
 function stonesLeft(team) {
   const thrown = team === firstTeam() ? Math.ceil(S.shotNo / 2) : Math.floor(S.shotNo / 2);
   return Math.max(0, 8 - thrown);
+}
+const hVal = () => (lastEnd() || S.mode === 'practice' ? 0 : 0.6);
+const humanTeams = () => (S.mode === 'cpu' ? [1 - S.cpuTeam] : [0, 1]);
+// ---------- review (rewinding the end) ----------
+// S.hist[p] is the game as it stood before the end's (p+1)th logged stone; S.log[p] is that stone.
+const posStones = p => (p < S.hist.length ? S.hist[p].stones : S.stones);
+const viewStones = () => (UI.review ? posStones(UI.review.p) : S.stones);
+const viewShotNo = () => (UI.review && UI.review.p < S.hist.length ? S.hist[UI.review.p].shotNo : S.shotNo);
+function viewTeam() {
+  if (!UI.review) return throwingTeam();
+  const e = S.log[UI.review.p]; if (e) return e.team;
+  return viewShotNo() % 2 === 0 ? firstTeam() : S.hammer;
 }
 const isCpuTurn = () => S.mode === 'cpu' && !S.endOver && !S.gameOver && throwingTeam() === S.cpuTeam;
 const lastEnd = () => S.end >= S.nEnds - 1;
@@ -776,13 +876,14 @@ function drawStone(ctx, x, y, team, ang, s, alpha = 1, ghost = false) {
   const hw = r * 0.95, hh = r * 0.2; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-hw / 2, -hh / 2, hw, hh, hh / 2) : ctx.rect(-hw / 2, -hh / 2, hw, hh); ctx.fill();
   ctx.restore();
 }
-function drawBroom(ctx, x, y, team, alpha = 1) {
+function drawBroom(ctx, x, y, team, alpha = 1, ghost = false) {
   // a Hardline-style broom head: one rounded rectangle held vertically (along the sheet)
   const w = 0.11 * SC, h = 0.30 * SC;
   ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y);
   ctx.fillStyle = team ? COL.t1 : COL.t0; ctx.strokeStyle = COL.mark; ctx.lineWidth = 2;
+  if (ghost) ctx.setLineDash([3, 3]);
   ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-w / 2, -h / 2, w, h, w / 2) : ctx.rect(-w / 2, -h / 2, w, h);
-  ctx.fill(); ctx.stroke(); ctx.restore();
+  if (!ghost) ctx.fill(); ctx.stroke(); ctx.restore();
 }
 function animFrame() {
   const A = UI.anim; if (!A) return null;
@@ -797,18 +898,20 @@ function animFrame() {
   return out;
 }
 function drawSweepers(ctx) {
-  const A = UI.anim; if (!A || !UI.sweeping || !canSweep()) return;
-  const t = A.sim.thrown; if (t.out || !t.mv) return;
-  const v = Math.hypot(t.vx, t.vy) || 1, ux = t.vx / v, uy = t.vy / v;
-  const w = 0.30 * SC, h = 0.11 * SC, ph = performance.now() / 70;
-  ctx.save(); ctx.fillStyle = A.team ? COL.t1 : COL.t0; ctx.strokeStyle = COL.mark; ctx.lineWidth = 1.5;
-  [[0.36, 1], [0.62, -1]].forEach(([ahead, dir]) => {
-    const wig = Math.sin(ph + (dir > 0 ? 0 : 1.6)) * 0.13;
-    const px = t.x + ux * ahead - uy * wig, py = t.y + uy * ahead + ux * wig;
-    ctx.save(); ctx.translate(sx(px), sy(py)); ctx.rotate(Math.atan2(uy, ux) + Math.PI / 2 + dir * 0.25);
-    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-w / 2, -h / 2, w, h, h / 2) : ctx.rect(-w / 2, -h / 2, w, h); ctx.fill(); ctx.stroke(); ctx.restore();
+  const A = UI.anim; if (!A || !A.mask) return;
+  const ph = performance.now() / 70, w = 0.30 * SC, h = 0.11 * SC;
+  A.sim.bodies.forEach((b, i) => {
+    const m = A.mask[i]; if (!m || b.out || !b.mv) return;
+    const v = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / v, uy = b.vy / v;
+    const slots = m === 3 ? [[0.36, 1, 0], [0.62, -1, 1]] : [[0.36, 1, m >> 1], [0.62, -1, m >> 1]];
+    for (const [ahead, dir, t] of slots) {
+      const wig = Math.sin(ph + (dir > 0 ? 0 : 1.6)) * 0.13;
+      const px = b.x + ux * ahead - uy * wig, py = b.y + uy * ahead + ux * wig;
+      ctx.save(); ctx.fillStyle = t ? COL.t1 : COL.t0; ctx.strokeStyle = COL.mark; ctx.lineWidth = 1.5;
+      ctx.translate(sx(px), sy(py)); ctx.rotate(Math.atan2(uy, ux) + Math.PI / 2 + dir * 0.25);
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-w / 2, -h / 2, w, h, h / 2) : ctx.rect(-w / 2, -h / 2, w, h); ctx.fill(); ctx.stroke(); ctx.restore();
+    }
   });
-  ctx.restore();
 }
 function drawPath(ctx, res, sim) {
   const fr = sim.frames; if (!fr) return;
@@ -828,12 +931,15 @@ function drawPath(ctx, res, sim) {
 }
 function draw() {
   if (!S || !COL.ice) return;
-  const ctx = mctx, w = main.width / DPR, h = main.height / DPR;
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  drawScene(mctx, main.width / DPR, main.height / DPR, DPR, pebbleCanvas);
+  drawMini();
+}
+function drawScene(ctx, w, h, scale, pebble, oy = 0) {
+  ctx.setTransform(scale, 0, 0, scale, 0, oy * scale);
   ctx.fillStyle = COL.ice; ctx.fillRect(0, 0, w, h);
-  if (pebbleCanvas) ctx.drawImage(pebbleCanvas, 0, 0, w, h);
+  if (pebble) ctx.drawImage(pebble, 0, 0, w, h);
   // free guard zone tint while it protects guards
-  if (S.shotNo < 5 && !UI.anim) {
+  if (viewShotNo() < 5 && !UI.anim) {
     ctx.fillStyle = COL.fgz; ctx.fillRect(0, sy(0), w, sy(HOG) - sy(0));
     ctx.fillStyle = COL.muted; ctx.font = '600 11px ' + getComputedStyle(document.body).getPropertyValue('--f-display');
     ctx.textAlign = 'center'; ctx.fillText('FREE GUARD ZONE', w / 2, sy(HOG) - 8);
@@ -849,8 +955,8 @@ function draw() {
   // markup
   ctx.strokeStyle = COL.pen; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   for (const st of UI.markup) { if (st.length < 2) continue; ctx.beginPath(); ctx.moveTo(sx(st[0][0]), sy(st[0][1])); for (const p of st) ctx.lineTo(sx(p[0]), sy(p[1])); ctx.stroke(); }
-  const team = throwingTeam();
-  const ready = !UI.anim && !S.endOver && !S.gameOver;
+  const team = viewTeam();
+  const ready = !UI.anim && (UI.review ? viewShotNo() < 16 : !S.endOver && !S.gameOver);
   // aim line from the near end to the broom
   if (ready) {
     const b = UI.hover ? { x: UI.hover.shot.bx, y: UI.hover.shot.by } : UI.broom;
@@ -860,8 +966,8 @@ function draw() {
     if (UI.preview) drawPath(ctx, UI.preview, UI.preview.sim);
   }
   // stones
-  const live = UI.anim ? animFrame() : S.stones;
-  const sc = UI.anim ? null : scoreOf(S.stones);
+  const live = UI.anim ? animFrame() : viewStones();
+  const sc = UI.anim ? null : scoreOf(viewStones());
   drawSweepers(ctx);
   for (const s of live) drawStone(ctx, sx(s.x), sy(s.y), s.team, s.ang || 0, SC);
   if (sc && sc.pts) {
@@ -872,10 +978,11 @@ function draw() {
     });
   }
   if (ready) {
+    const played = UI.review && S.log[UI.review.p] && S.log[UI.review.p].shot;
+    if (played) drawBroom(ctx, sx(played.bx), sy(played.by), team, 0.8, true);
     if (UI.hover) drawBroom(ctx, sx(UI.hover.shot.bx), sy(UI.hover.shot.by), team, 0.9);
     else drawBroom(ctx, sx(UI.broom.x), sy(UI.broom.y), team);
   }
-  drawMini();
 }
 function drawMini() {
   const ctx = nctx, w = mini.width / DPR, h = mini.height / DPR, s = MSC;
@@ -888,7 +995,7 @@ function drawMini() {
   ctx.strokeStyle = COL.mark; ctx.globalAlpha = 0.5; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h); ctx.stroke(); ctx.globalAlpha = 1;
   ctx.strokeStyle = COL.accent; ctx.lineWidth = 1.5; ctx.strokeRect(0.75, my(VIEW_TOP), w - 1.5, my(VIEW_BOT) - my(VIEW_TOP));
-  const live = UI.anim ? animFrame() : S.stones;
+  const live = UI.anim ? animFrame() : viewStones();
   for (const st of live) { ctx.fillStyle = st.team ? COL.t1 : COL.t0; ctx.beginPath(); ctx.arc(mx(st.x), my(st.y), Math.max(2.2, R * s * 1.4), 0, 7); ctx.fill(); }
   if (!UI.anim && !S.endOver) {
     ctx.save(); ctx.setLineDash([2, 3]); ctx.strokeStyle = COL.mark; ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.moveTo(mx(0), my(NEAR)); ctx.lineTo(mx(UI.broom.x), my(UI.broom.y)); ctx.stroke(); ctx.restore();
@@ -929,15 +1036,15 @@ function buildDial() {
     if (Math.abs(u - UI.u) > 0.5) u = UI.u > 0.5 ? 1 : 0;
     setWeight(u);
   };
-  svg.addEventListener('pointerdown', e => { if (controlsLocked()) return; dragging = true; svg.setPointerCapture(e.pointerId); setFrom(e); });
+  svg.addEventListener('pointerdown', e => { if (!canAnalyze()) return; dragging = true; svg.setPointerCapture(e.pointerId); setFrom(e); });
   svg.addEventListener('pointermove', e => { if (dragging) setFrom(e); });
   svg.addEventListener('pointerup', () => { dragging = false; });
   svg.addEventListener('keydown', e => {
-    if (controlsLocked()) return;
+    if (!canAnalyze()) return;
     const step = { ArrowRight: 0.004, ArrowUp: 0.004, ArrowLeft: -0.004, ArrowDown: -0.004, PageUp: 0.04, PageDown: -0.04 }[e.key];
     if (step) { e.preventDefault(); setWeight(UI.u + step); }
   });
-  svg.addEventListener('wheel', e => { if (controlsLocked()) return; e.preventDefault(); setWeight(UI.u - Math.sign(e.deltaY) * 0.004); }, { passive: false });
+  svg.addEventListener('wheel', e => { if (!canAnalyze()) return; e.preventDefault(); setWeight(UI.u - Math.sign(e.deltaY) * 0.004); }, { passive: false });
 }
 function setWeight(u) { UI.u = clamp(u, 0, 1); UI.hover = null; renderDial(); updatePreview(); save(); }
 function stepTime(dir) {
@@ -967,10 +1074,10 @@ function updatePreview() {
   if (pvQueued) return; pvQueued = true;
   requestAnimationFrame(() => {
     pvQueued = false;
-    if (S && !UI.anim && !S.endOver && (UI.showPath || UI.hover)) {
-      const sh = UI.hover ? { ...UI.hover.shot } : mkShot(throwingTeam(), UI.broom.x, UI.u, UI.spin, UI.broom.y);
-      sh.team = throwingTeam(); sh.id = -9;
-      UI.preview = resolveShot(S.stones, sh, S.shotNo, true);
+    if (S && !UI.anim && (UI.review ? viewShotNo() < 16 : !S.endOver) && (UI.showPath || UI.hover)) {
+      const sh = UI.hover ? { ...UI.hover.shot } : mkShot(viewTeam(), UI.broom.x, UI.u, UI.spin, UI.broom.y);
+      sh.team = viewTeam(); sh.id = -9;
+      UI.preview = resolveShot(viewStones(), sh, viewShotNo(), true);
     } else UI.preview = null;
     draw();
   });
@@ -990,10 +1097,11 @@ function evPos(e) { const rc = main.getBoundingClientRect(); return [wx(e.client
 function edited() { UI.sugs = null; renderAll(); save(); }
 main.addEventListener('pointerdown', e => {
   if (UI.anim) { skipAnim(); return; }
-  if (UI.busy || S.gameOver) return;
+  if (UI.busy || (S.gameOver && !UI.review)) return;
   const [x, y] = evPos(e); main.setPointerCapture(e.pointerId);
   const t = UI.tool;
-  if (t === 'broom') { if (S.endOver || isCpuTurn()) return; UI.hover = null; UI.drag = { kind: 'broom' }; const px = UI.broom.x; UI.broom = { x: clamp(x, -HW, HW), y: clamp(y, VIEW_TOP, VIEW_BOT) }; autoTurn(px); renderBroomRead(); updatePreview(); }
+  if (UI.review && t !== 'broom' && t !== 'pen') { toast('Choose <b>Back to live</b> or <b>Play on from here</b> before moving stones.'); return; }
+  if (t === 'broom') { if (!UI.review && (S.endOver || isCpuTurn())) return; UI.hover = null; UI.drag = { kind: 'broom' }; const px = UI.broom.x; UI.broom = { x: clamp(x, -HW, HW), y: clamp(y, VIEW_TOP, VIEW_BOT) }; autoTurn(px); renderBroomRead(); updatePreview(); }
   else if (t === 'move') { const s = stoneAt(x, y); if (s) UI.drag = { kind: 'stone', s }; }
   else if (t === 'add0' || t === 'add1') {
     if (Math.abs(x) > HW - R || y > HOG + R) return;
@@ -1011,8 +1119,29 @@ main.addEventListener('pointermove', e => {
 main.addEventListener('pointerup', () => { const d = UI.drag; UI.drag = null; if (d && (d.kind === 'stone' || d.kind === 'broom')) { save(); if (d.kind === 'stone') edited(); } });
 
 // ---------- throwing ----------
-function controlsLocked() { return !!UI.anim || UI.busy || S.endOver || S.gameOver || isCpuTurn(); }
-function canSweep() { const A = UI.anim; return !!A && !A.isCpu && !A.sim.done; }
+function controlsLocked() { return !!UI.anim || UI.busy || !!UI.review || S.endOver || S.gameOver || isCpuTurn(); }
+// reading the position (suggestions, broom, weight, handle) also works while reviewing
+function canAnalyze() { return !UI.anim && !UI.busy && (UI.review ? viewShotNo() < 16 : !S.endOver && !S.gameOver && !isCpuTurn()); }
+// Sweeping this physics step: held buttons/keys for human teams, the computer's own decision for its team.
+// Every change is logged by step number so a replay reproduces the throw exactly.
+function liveMask(A, human = true) {
+  const sim = A.sim, m = new Uint8Array(sim.bodies.length);
+  if (S.mode === 'cpu') {
+    if (sim.time >= A.cpuNext) {
+      A.cpuOn = cpuWantsSweep(sim, S.cpuTeam, A.before, A.shotNo, S.hammer, hVal());
+      A.cpuNext = sim.time + (sim.thrown.y > VIEW_BOT ? 0.5 : 0.25);
+    }
+    if (A.cpuOn) { const i = sweepTarget(sim, S.cpuTeam); if (i >= 0) m[i] |= 1 << S.cpuTeam; }
+  }
+  if (human) for (const t of humanTeams()) if (UI.sweeping[t]) { const i = sweepTarget(sim, t); if (i >= 0) m[i] |= 1 << t; }
+  const key = m.join('');
+  if (key !== A.maskKey) { A.maskKey = key; A.sweeps.push([sim.steps, Array.from(m)]); }
+  return (A.mask = m);
+}
+function replayMask(A) {
+  while (A.ev < A.log.length && A.log[A.ev][0] <= A.sim.steps) A.mask = Uint8Array.from(A.log[A.ev++][1]);
+  return A.mask;
+}
 function doThrow(isCpu) {
   if (UI.anim || S.endOver || S.gameOver) return;
   const team = throwingTeam();
@@ -1021,8 +1150,9 @@ function doThrow(isCpu) {
   const sh = (lv.v || lv.x) ? perturb(base, lv, Math.random) : base;
   sh.id = S.nextId++; sh.ang0 = Math.random() * 6;
   UI.preview = null; UI.hover = null; UI.sugs = null;
-  UI.anim = { sim: createSim(S.stones, sh, false), before: S.stones, shotNo: S.shotNo, team, isCpu, called: base, last: performance.now(), clock: 0, prev: null, prevT: 0 };
-  toast(isCpu ? `<b>${TEAM[team]}</b> throws stone ${S.shotNo + 1}.` : `<b>${TEAM[team]}</b> throws stone ${S.shotNo + 1}. Hold <b>Sweep</b> (or Space) to carry it farther and straighter.`);
+  UI.anim = { sim: createSim(S.stones, sh, false), before: S.stones, shotNo: S.shotNo, team, isCpu, called: base, shot: sh,
+    last: performance.now(), clock: 0, prev: null, prevT: 0, sweeps: [], maskKey: '', mask: null, cpuNext: 0, cpuOn: false };
+  toast(isCpu ? `<b>${TEAM[team]}</b> throws stone ${S.shotNo + 1}. You can sweep it once it passes the tee line.` : `<b>${TEAM[team]}</b> throws stone ${S.shotNo + 1}. Hold <b>Sweep</b> (or Space) to carry it farther and straighter.`);
   renderAll();
   if (!PLAY[UI.set.playback]) { finishAnim(); return; }
   requestAnimationFrame(animStep);
@@ -1034,10 +1164,9 @@ function animStep(now) {
   // playback runs on its own clock; physics steps vary in length (0.01–0.15 s), so step only until the
   // simulation is just ahead of the clock and draw positions interpolated between the last two steps
   A.clock += dt * (sim.thrown.y > VIEW_BOT + 0.4 ? sp.out : sp.inn);
-  const sweep = UI.sweeping && canSweep();
   while (!sim.done && sim.time < A.clock) {
     A.prev = sim.bodies.flatMap(b => [b.x, b.y, b.ang]); A.prevT = sim.time;
-    stepSim(sim, sweep);
+    stepSim(sim, A.replay ? replayMask(A) : liveMask(A));
   }
   renderSweepBtn();
   if (sim.done && A.clock >= sim.time) { finishAnim(); return; }
@@ -1047,16 +1176,27 @@ function skipAnim() { if (UI.anim) finishAnim(); }
 function snapshot() { const { hist, ...rest } = S; return JSON.parse(JSON.stringify(rest)); }
 function finishAnim() {
   const A = UI.anim; if (!A) return;
-  while (!A.sim.done) stepSim(A.sim, false);
-  UI.anim = null; UI.sweeping = false;
+  if (A.replay) {
+    while (!A.sim.done) stepSim(A.sim, replayMask(A));
+    UI.anim = null; Object.assign(ICE, A.iceNow);
+    const e = S.log[A.k - 1]; UI.review.p = A.k;
+    toast(`Replayed stone ${e.n}: ${e.label}.`); renderAll(); updatePreview(); return;
+  }
+  // skipping ends human sweeping; the computer keeps making its own sweep calls
+  UI.sweeping = [false, false];
+  while (!A.sim.done) stepSim(A.sim, liveMask(A, false));
+  UI.anim = null;
   const res = finalizeShot(A.before, A.sim, A.shotNo), team = A.team;
   S.hist.push(snapshot());
-  S.stones = res.stones; S.sample = false;
+  S.stones = res.stones; S.sample = false; S.shared = false;
   const handle = A.called.spin > 0 ? 'in-turn' : 'out-turn';
-  const T = hogTime(A.called.v0), swept = A.sim.swept;
-  S.log.push({ n: S.shotNo + 1, team, label: res.label, call: `${handle}, ${weightName(A.called.v0).toLowerCase()}${T ? ' (' + T.toFixed(1) + ' s)' : ''}${swept > 0.05 ? ` · swept ${swept.toFixed(1)} s` : ''}`, stones: res.stones.map(s => ({ team: s.team, x: s.x, y: s.y })) });
+  const T = hogTime(A.called.v0), by = A.sim.sweptBy;
+  const swept = [0, 1].filter(t => by[t] > 0.05).map(t => `${TEAM[t]} swept ${by[t].toFixed(1)} s`).join(', ');
+  S.log.push({ n: S.shotNo + 1, team, label: res.label, call: `${handle}, ${weightName(A.called.v0).toLowerCase()}${T ? ' (' + T.toFixed(1) + ' s)' : ''}${swept ? ' · ' + swept : ''}`,
+    stones: res.stones.map(s => ({ team: s.team, x: s.x, y: s.y })),
+    shot: A.shot, ice: { a: ICE.a, K: ICE.K, sweep: ICE.sweep }, sweeps: A.sweeps });
   S.shotNo++; UI.pick = null;
-  let msg = `<b>${TEAM[team]}:</b> ${res.label}${swept > 0.05 ? ` (swept ${swept.toFixed(1)} s)` : ''}.`;
+  let msg = `<b>${TEAM[team]}:</b> ${res.label}${swept ? ` (${swept})` : ''}.`;
   if (res.violation) msg += ' The stones go back where they were and the delivered stone is removed.';
   toast(msg);
   if (S.shotNo >= 16) S.endOver = true;
@@ -1068,7 +1208,8 @@ function afterTurn() {
 }
 
 // ---------- computer ----------
-function ctxFor(team) { return { stones: S.stones, shotNo: S.shotNo, hammer: S.hammer, team, H: lastEnd() || S.mode === 'practice' ? 0 : 0.6 }; }
+function ctxFor(team) { return { stones: viewStones(), shotNo: viewShotNo(), hammer: S.hammer, team, H: hVal() }; }
+const sugKey = () => (UI.review ? 'r' + UI.review.p : 'live') + ':' + viewShotNo() + ':' + viewTeam();
 function setThinking(t) { const el = $('#thinking'); el.hidden = !t; el.textContent = t; }
 async function cpuMove() {
   const token = ++UI.aiToken; UI.busy = true; renderAll();
@@ -1086,16 +1227,16 @@ async function cpuMove() {
   doThrow(true);
 }
 async function suggest() {
-  if (controlsLocked()) return;
+  if (!canAnalyze()) return;
   const token = ++UI.aiToken; UI.busy = true;
   const area = $('#sugArea');
   area.innerHTML = `<div class="note">Testing about 1,000 calls, then checking the opponent's best reply…</div><div class="progress"><i id="sugBar"></i></div>`;
   renderControls();
-  const team = throwingTeam();
-  const res = await findShots(ctxFor(team), p => { const b = $('#sugBar'); if (b) b.style.width = (p * 100) + '%'; }, () => token === UI.aiToken);
+  const team = viewTeam(), ctx = ctxFor(team);
+  const res = await findShots(ctx, p => { const b = $('#sugBar'); if (b) b.style.width = (p * 100) + '%'; }, () => token === UI.aiToken);
   UI.busy = false;
   if (token !== UI.aiToken || !res) { renderAll(); return; }
-  UI.sugs = pickSuggestions(res); UI.sugFor = S.shotNo;
+  UI.sugs = pickSuggestions(res); UI.sugFor = sugKey(); UI.sugCtx = ctx;
   renderAll();
 }
 function applySug(c) {
@@ -1133,7 +1274,7 @@ function nextEnd() {
       else S.gameOver = true;
     }
   }
-  S.stones = []; S.shotNo = 0; S.log = []; S.hist = []; S.endOver = false; UI.sugs = null; UI.markup = [];
+  S.stones = []; S.shotNo = 0; S.log = []; S.hist = []; S.endOver = false; UI.sugs = null; UI.markup = []; UI.review = null;
   save(); renderAll();
   if (S.gameOver) {
     const w = totals(0) > totals(1) ? 0 : 1, b = $('#banner');
@@ -1143,7 +1284,7 @@ function nextEnd() {
   if (isCpuTurn()) cpuMove();
 }
 function undo() {
-  if (UI.anim) return;
+  if (UI.anim || UI.review) return;
   UI.aiToken++; UI.busy = false; setThinking('');
   if (!S.hist.length) { toast('Nothing to undo in this end.'); renderAll(); return; }
   const hist = S.hist;
@@ -1157,7 +1298,7 @@ function undo() {
 function randomScenario() {
   UI.aiToken++; UI.busy = false; setThinking(''); $('#banner').hidden = true;
   const r = Math.random;
-  S.stones = []; S.log = []; S.hist = []; S.endOver = false; S.sample = false; UI.markup = [];
+  S.stones = []; S.log = []; S.hist = []; S.endOver = false; S.sample = false; S.shared = false; UI.markup = []; UI.review = null;
   let k = 6 + Math.floor(r() * 9);
   if (S.mode === 'cpu') { S.shotNo = k; if (throwingTeam() === S.cpuTeam) k = k < 15 ? k + 1 : k - 1; }
   S.shotNo = k;
@@ -1196,7 +1337,7 @@ $('#ngStart').onclick = () => {
   UI.aiToken++; UI.busy = false; setThinking(''); $('#banner').hidden = true;
   const hammer = NG.hammer === 'coin' ? (Math.random() < 0.5 ? 0 : 1) : Number(NG.hammer);
   S = newState({ mode: NG.mode, cpuTeam: 1 - NG.side, hammer, nEnds: NG.ends });
-  UI.sugs = null; UI.markup = []; UI.pick = null;
+  UI.sugs = null; UI.markup = []; UI.pick = null; UI.review = null;
   toast(NG.hammer === 'coin' ? `Coin toss: ${TEAM[hammer]} has the hammer.` : `New game. ${TEAM[firstTeam()]} throws first.`);
   save(); renderAll(); updatePreview();
   if (isCpuTurn()) cpuMove();
@@ -1212,7 +1353,8 @@ function renderStatus() {
   if (S.mode !== 'practice') h += `<span class="mini-score"><span class="chip t0"></span>${totals(0)}<span style="color:var(--muted)">–</span>${totals(1)}<span class="chip t1" style="margin:0 0 0 6px"></span></span>`;
   if (S.gameOver) h += `<span><b>Final</b></span>`;
   else h += `<span>End <b>${S.end + 1}</b>${S.mode === 'practice' ? '' : ' of ' + S.nEnds} · Stone <b>${Math.min(16, S.shotNo + 1)}</b> of 16 · ${S.endOver ? 'End complete' : `<b>${TEAM[team]}</b> to throw`}</span>`;
-  h += `<span>${modeName}${S.sample ? ' · sample position' : ''}</span>`;
+  h += `<span>${modeName}${S.sample ? ' · sample position' : S.shared ? ' · shared position' : ''}</span>`;
+  if (UI.review) h += `<span class="pill fgz">Reviewing this end</span>`;
   $('#status').innerHTML = h;
   $('#modePill').textContent = modeName;
 }
@@ -1235,10 +1377,10 @@ function renderScoreboard() {
   $('#rocksLeft').innerHTML = r;
 }
 function renderRead() {
-  const sc = scoreOf(S.stones), el = $('#read');
+  const sc = scoreOf(viewStones()), el = $('#read');
   let h = sc.pts ? `<div class="big"><span class="chip t${sc.team}"></span>${TEAM[sc.team]} is sitting ${sc.pts}</div>` : `<div class="big">Nobody is counting</div>`;
   const parts = [`${TEAM[S.hammer]} has the hammer`];
-  if (S.shotNo < 5) parts.push(`<span class="pill fgz">Free guard zone protected until stone 6</span>`);
+  if (viewShotNo() < 5) parts.push(`<span class="pill fgz">Free guard zone protected until stone 6</span>`);
   h += `<div class="note">${parts.join(' · ')}</div>`;
   if (sc.list.length) {
     h += '<ol class="meas">';
@@ -1253,21 +1395,27 @@ function renderRead() {
 function renderSugs() {
   const area = $('#sugArea');
   if (UI.busy && !isCpuTurn()) return;
-  if (!UI.sugs || UI.sugFor !== S.shotNo) { area.innerHTML = `<p class="note">Suggest a shot reads the position for ${TEAM[throwingTeam()]}, tests about a thousand calls, and checks the opponent's best answer to each.</p>`; return; }
-  let h = '<div class="sugs">';
+  const played = UI.review && S.log[UI.review.p];
+  const playedNote = played ? `<p class="note">Played: <b>${played.label}</b> (${played.call}).</p>` : '';
+  if (!UI.sugs || UI.sugFor !== sugKey()) {
+    area.innerHTML = playedNote + `<p class="note">Suggest a shot reads the position for ${TEAM[viewTeam()]}${UI.review ? ' at this point in the end' : ''}, tests about a thousand calls, and checks the opponent's best answer to each.</p>`;
+    return;
+  }
+  let h = playedNote + '<div class="sugs">';
   UI.sugs.forEach((c, i) => {
     const T = hogTime(c.shot.v0);
     const val = c.score >= 0 ? '+' + c.score.toFixed(2) : c.score.toFixed(2);
     const dcls = { Easy: 'easy', Moderate: 'mod', Hard: 'hard', 'Very hard': 'vhard' }[c.difficulty] || 'mod';
     h += `<button class="sug" data-i="${i}"><span class="n">${c.alt ? '\u2022' : i + 1}</span><span class="t">${c.res.label}</span><span class="v">${val}</span>
-      <span class="d tags"><span class="pill">${c.alt ? 'Alternative ' + c.cat.toLowerCase() : c.cat}</span><span class="pill diff ${dcls}">${c.difficulty}</span><span>makes it ${Math.round(c.make * 100)}%</span></span>
+      <span class="d tags"><span class="pill">${c.alt ? 'Alternative ' + c.cat.toLowerCase() : c.cat}</span><span class="pill diff ${dcls}">${c.difficulty}</span><span>makes it ${Math.round(c.make * 100)}%</span>${played && played.label === c.res.label ? '<span class="pill played">What was played</span>' : ''}</span>
+      <span class="d why">${UI.sugCtx ? explainShot(c, UI.sugCtx) : ''}</span>
       <span class="d">${c.shot.spin > 0 ? 'In-turn' : 'Out-turn'} · ${weightName(c.shot.v0)}${T ? ' ' + T.toFixed(1) + ' s' : ''} · broom ${Math.abs(c.shot.bx).toFixed(2)} m ${c.shot.bx < 0 ? 'left' : 'right'}${c.reply ? `<br>Likely reply: ${c.reply.toLowerCase()}` : ''}</span></button>`;
   });
-  h += `</div><p class="note">Rating is a points estimate for ${TEAM[throwingTeam()]} after the opponent’s best reply, averaged over a competitive thrower’s misses. Difficulty is how often that thrower makes the shot. Hover to preview the path, click to load the call.</p>`;
+  h += `</div><p class="note">Rating is a points estimate for ${TEAM[viewTeam()]} after the opponent’s best reply, averaged over a competitive thrower’s misses. Difficulty is how often that thrower makes the shot. Hover to preview the path, click to load the call.</p>`;
   area.innerHTML = h;
   area.querySelectorAll('.sug').forEach(b => {
     const c = UI.sugs[+b.dataset.i];
-    b.addEventListener('mouseenter', () => { if (controlsLocked()) return; UI.hover = c; updatePreview(); });
+    b.addEventListener('mouseenter', () => { if (!canAnalyze()) return; UI.hover = c; updatePreview(); });
     b.addEventListener('mouseleave', () => { UI.hover = null; updatePreview(); });
     b.addEventListener('click', () => applySug(c));
   });
@@ -1275,8 +1423,14 @@ function renderSugs() {
 function renderHistory() {
   const el = $('#history');
   if (!S.log.length) { el.innerHTML = `<li class="empty">No stones thrown yet this end.</li>`; return; }
-  el.innerHTML = S.log.slice().reverse().map((l, i) => `<li><canvas data-i="${S.log.length - 1 - i}"></canvas><div><div class="who"><span class="chip t${l.team}"></span>Stone ${l.n} · ${TEAM[l.team]}</div><div>${l.label}</div><div class="sub">Called ${l.call}</div></div></li>`).join('');
+  const sel = UI.review ? UI.review.p : -1;
+  el.innerHTML = S.log.slice().reverse().map((l, i) => `<li class="hitem${S.log.length - 1 - i === sel ? ' sel' : ''}" data-p="${S.log.length - 1 - i}" tabindex="0" role="button" title="Review the position before this stone"><canvas data-i="${S.log.length - 1 - i}"></canvas><div><div class="who"><span class="chip t${l.team}"></span>Stone ${l.n} · ${TEAM[l.team]}</div><div>${l.label}</div><div class="sub">Called ${l.call}</div></div></li>`).join('');
   el.querySelectorAll('canvas').forEach(cv => drawThumb(cv, S.log[+cv.dataset.i].stones));
+  el.querySelectorAll('.hitem').forEach(li => {
+    const go = () => (UI.review ? reviewGo(+li.dataset.p) : enterReview(+li.dataset.p));
+    li.addEventListener('click', go);
+    li.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
 }
 function renderBroomRead() {
   const b = UI.broom;
@@ -1284,29 +1438,41 @@ function renderBroomRead() {
   const depth = Math.abs(b.y) < 0.05 ? 'on the tee line' : `${Math.abs(b.y).toFixed(2)} m ${b.y < 0 ? 'behind' : 'in front of'} the tee`;
   $('#broomRead').textContent = `Broom: ${side}, ${depth}. ${UI.spin > 0 ? 'In-turn curls right.' : 'Out-turn curls left.'}`;
 }
+const spaceTeam = () => { const h = humanTeams(); return h.length === 1 ? h[0] : UI.anim && !UI.anim.replay ? UI.anim.team : throwingTeam(); };
 function renderSweepBtn() {
-  const b = $('#btnSweep'), ok = canSweep();
-  b.disabled = !ok; b.setAttribute('aria-pressed', ok && UI.sweeping);
-  $('#sweepLbl').textContent = !UI.anim ? 'Hold to sweep during a throw' : !ok ? 'Computer\u2019s stone' : UI.sweeping ? 'Sweeping!' : 'Hold to sweep';
+  const A = UI.anim, live = !!A && !A.replay && !A.sim.done, hs = humanTeams(), sp = spaceTeam();
+  for (const t of [0, 1]) {
+    const b = $('#sweep' + t); b.hidden = !hs.includes(t);
+    const target = live ? sweepTarget(A.sim, t) : -1, on = target >= 0 && UI.sweeping[t];
+    b.disabled = target < 0; b.setAttribute('aria-pressed', on);
+    b.querySelector('.lbl').textContent = `${TEAM[t]}: ` + (!live ? 'hold to sweep during a throw'
+      : target >= 0 ? (on ? 'sweeping!' : 'hold to sweep')
+      : A.sim.thrown.team !== t && !A.sim.thrown.out ? 'sweep once it passes the tee line' : 'nothing to sweep');
+    b.querySelector('kbd').textContent = t === sp ? 'Space' : t ? 'L' : 'A';
+  }
 }
 function renderControls() {
   renderSweepBtn();
-  const team = throwingTeam(), locked = controlsLocked();
-  $('#whoThrows').innerHTML = `<span class="chip t${team}"></span><b>${TEAM[team]}</b>&nbsp;stone ${Math.min(16, S.shotNo + 1)}`;
+  const team = viewTeam(), locked = controlsLocked(), explore = !canAnalyze();
+  const stoneN = UI.review && S.log[UI.review.p] ? S.log[UI.review.p].n : Math.min(16, viewShotNo() + 1);
+  $('#whoThrows').innerHTML = `<span class="chip t${team}"></span><b>${TEAM[team]}</b>&nbsp;stone ${stoneN}`;
   $('#pickTeam').hidden = S.mode !== 'practice';
   $('#pickTeam').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.team === team));
-  $('#handle').querySelectorAll('button').forEach(b => { b.setAttribute('aria-pressed', +b.dataset.spin === UI.spin); b.disabled = locked; });
-  $('#wMinus').disabled = $('#wPlus').disabled = locked;
+  $('#handle').querySelectorAll('button').forEach(b => { b.setAttribute('aria-pressed', +b.dataset.spin === UI.spin); b.disabled = explore; });
+  $('#wMinus').disabled = $('#wPlus').disabled = explore;
   const tb = $('#btnThrow'); tb.disabled = locked;
-  tb.textContent = S.gameOver ? 'Game over' : S.endOver ? 'End complete' : isCpuTurn() ? 'Computer’s turn' : `Throw ${TEAM[team]}’s stone`;
-  $('#btnSuggest').disabled = locked;
-  $('#btnUndo').disabled = !!UI.anim || !S.hist.length;
-  $('#dial').style.opacity = locked ? 0.6 : 1;
+  tb.textContent = UI.review ? 'Reviewing: back to live to throw' : S.gameOver ? 'Game over' : S.endOver ? 'End complete' : isCpuTurn() ? 'Computer’s turn' : `Throw ${TEAM[team]}’s stone`;
+  $('#btnSuggest').disabled = explore;
+  $('#btnUndo').disabled = !!UI.anim || !S.hist.length || !!UI.review;
+  $('#btnReview').disabled = !!UI.anim || UI.busy || !S.log.length;
+  $('#btnReview').hidden = !!UI.review;
+  $('#btnCopyLink').disabled = $('#btnSaveImg').disabled = !!UI.anim;
+  $('#dial').style.opacity = explore ? 0.6 : 1;
   $('#tools').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.tool === UI.tool));
 }
 function sweepGain() { // extra distance and curl removed when a guard-weight stone is swept all the way
-  const sh = mkShot(0, -ICE.curl, uFromV(Math.sqrt(2 * ICE.a * (NEAR - 4))), 1), a = simulate([], sh), b = createSim([], sh);
-  while (!b.done) stepSim(b, true);
+  const sh = mkShot(0, -ICE.curl, uFromV(Math.sqrt(2 * ICE.a * (NEAR - 4))), 1), a = simulate([], sh), b = createSim([], sh), m = Uint8Array.of(1);
+  while (!b.done) stepSim(b, m);
   return { dist: a.thrown.y - b.thrown.y, curl: a.thrown.x - b.thrown.x };
 }
 function renderIce() {
@@ -1317,17 +1483,188 @@ function renderIce() {
   $('#iceCurl').value = ICE.curl; $('#iceCurlV').textContent = `${ICE.curl.toFixed(2)} m (${(ICE.curl / 0.3048).toFixed(1)} ft)`;
   $('#youLvl').value = UI.set.you; $('#cpuLvl').value = UI.set.cpu; $('#playback').value = UI.set.playback;
 }
-function renderAll() { renderStatus(); renderScoreboard(); renderRead(); renderSugs(); renderHistory(); renderControls(); renderDial(); renderBroomRead(); draw(); }
+function renderReviewBar() {
+  const bar = $('#reviewBar'), rv = UI.review; bar.hidden = !rv; if (!rv) return;
+  const L = S.log.length, p = rv.p, e = S.log[p], busy = !!UI.anim;
+  $('#rvLbl').innerHTML = p < L ? `Before stone <b>${e.n}</b> · <span class="chip t${e.team}"></span>${TEAM[e.team]} played ${e.label.toLowerCase()}`
+    : `After stone <b>${S.log[L - 1].n}</b> · the current position`;
+  const k = p < L ? p + 1 : L, ke = S.log[k - 1], rp = $('#rvReplay');
+  rp.textContent = `Replay stone ${ke.n}`; rp.disabled = busy || !ke.shot;
+  rp.title = ke.shot ? 'Watch this stone again, sweeping included' : 'This stone was thrown before replays were recorded';
+  $('#rvFirst').disabled = $('#rvPrev').disabled = busy || p === 0;
+  $('#rvNext').disabled = $('#rvLast').disabled = busy || p === L;
+  const rs = $('#rvResume'); rs.hidden = p === L; rs.disabled = busy;
+  rs.textContent = rv.confirm ? `Discard ${L - p} later stone${L - p > 1 ? 's' : ''}?` : 'Play on from here';
+  rs.classList.toggle('danger', !!rv.confirm);
+  $('#rvExit').disabled = busy;
+}
+function renderAll() { renderStatus(); renderScoreboard(); renderRead(); renderSugs(); renderHistory(); renderControls(); renderReviewBar(); renderDial(); renderBroomRead(); draw(); }
+
+// ---------- review actions ----------
+function enterReview(p) {
+  if (UI.anim || UI.busy || !S.log.length) return;
+  UI.review = { p: clamp(p, 0, S.log.length), confirm: false }; UI.sugs = null; UI.hover = null;
+  $('#banner').hidden = true; $('#shareBox').hidden = true;
+  toast('Reviewing the end. Step through it, replay a stone, or ask <b>Suggest a shot</b> what should have been called.');
+  renderAll(); updatePreview();
+}
+function reviewGo(p) {
+  if (!UI.review || UI.anim) return;
+  UI.review.p = clamp(p, 0, S.log.length); UI.review.confirm = false; UI.sugs = null; UI.hover = null;
+  renderAll(); updatePreview();
+}
+function exitReview() {
+  if (!UI.review || UI.anim) return;
+  UI.review = null; UI.sugs = null; UI.hover = null; toast('Back to the live game.');
+  renderAll(); updatePreview();
+  if (S.endOver) showEndBanner();
+}
+function startReplay() {
+  const L = S.log.length, k = UI.review.p < L ? UI.review.p + 1 : L, e = S.log[k - 1];
+  if (!e || !e.shot || UI.anim) return;
+  UI.review.p = k - 1; UI.review.confirm = false;
+  const iceNow = { a: ICE.a, K: ICE.K, sweep: ICE.sweep };
+  Object.assign(ICE, e.ice);   // replay on the ice the stone was thrown on
+  const before = posStones(k - 1);
+  UI.anim = { replay: true, k, iceNow, sim: createSim(before, e.shot, false), before, shotNo: k - 1, team: e.team, isCpu: true,
+    called: e.shot, last: performance.now(), clock: 0, prev: null, prevT: 0, log: e.sweeps || [], ev: 0, mask: null };
+  UI.preview = null; UI.hover = null; renderAll();
+  if (!PLAY[UI.set.playback]) { finishAnim(); return; }
+  requestAnimationFrame(animStep);
+}
+function resumeFromReview() {
+  const rv = UI.review; if (!rv || UI.anim) return;
+  const p = rv.p, L = S.log.length;
+  if (p < L && !rv.confirm) { rv.confirm = true; renderReviewBar(); return; }
+  if (p < L) {
+    const n = S.log[p].n, h = S.hist.slice(0, p);
+    S = Object.assign(JSON.parse(JSON.stringify(S.hist[p])), { hist: h });
+    toast(`Back to stone ${n}. The stones thrown after it were discarded.`);
+  }
+  UI.review = null; UI.sugs = null; $('#banner').hidden = true;
+  save(); renderAll(); updatePreview();
+  if (S.endOver) showEndBanner(); else if (isCpuTurn()) cpuMove();
+}
+
+// ---------- sharing ----------
+const ARTIFACT_URL = 'https://claude.ai/artifact/2aEHPcKfdyfaA824tJbcRs';
+// Position link: version, stone number + hammer + handle, broom (cm) and weight, then 3 bytes per stone
+// (team bit, x and y in cm). Base64url keeps it to the characters a link's #anchor may carry.
+function encodePos() {
+  const st = viewStones().slice(0, 16), cm = (v, lo, hi, off) => Math.round(clamp(v, lo, hi) * 100) + off;
+  const b = [1, Math.min(16, viewShotNo()) | (S.hammer << 5) | (UI.spin > 0 ? 64 : 0), st.length];
+  const bb = (cm(UI.broom.x, -2.4, 2.4, 240) << 10) | cm(UI.broom.y, -2.5, 7.2, 250);
+  b.push(bb >> 16 & 255, bb >> 8 & 255, bb & 255, Math.round(UI.u * 255));
+  for (const x of st) { const v = (x.team << 19) | (cm(x.x, -2.4, 2.4, 240) << 10) | cm(x.y, -2.5, 7.2, 250); b.push(v >> 16 & 255, v >> 8 & 255, v & 255); }
+  return 'p' + btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function decodePos(tok) {
+  try {
+    const b64 = tok.slice(1).replace(/-/g, '+').replace(/_/g, '/');
+    const b = [...atob(b64 + '='.repeat((4 - b64.length % 4) % 4))].map(c => c.charCodeAt(0));
+    const n = b[2];
+    if (b[0] !== 1 || n > 16 || b.length < 7 + 3 * n) return null;
+    const bb = b[3] << 16 | b[4] << 8 | b[5];
+    const pos = { shotNo: Math.min(15, b[1] & 31), hammer: b[1] >> 5 & 1, spin: b[1] & 64 ? 1 : -1,
+      broom: { x: ((bb >> 10) - 240) / 100, y: ((bb & 1023) - 250) / 100 }, u: b[6] / 255, stones: [] };
+    for (let i = 0; i < n; i++) {
+      const o = 7 + 3 * i, v = b[o] << 16 | b[o + 1] << 8 | b[o + 2];
+      pos.stones.push({ team: v >> 19 & 1, x: ((v >> 10 & 511) - 240) / 100, y: ((v & 1023) - 250) / 100 });
+    }
+    return pos;
+  } catch (e) { return null; }
+}
+function showShareBox(html) {
+  const box = $('#shareBox');
+  box.innerHTML = html + '<div class="row2"><button class="btn small" id="shareClose">Close</button></div>';
+  box.hidden = false; $('#shareClose').onclick = () => { box.hidden = true; };
+  const inp = box.querySelector('input'); if (inp) { inp.focus(); inp.select(); }
+}
+function copyLink() {
+  const url = ARTIFACT_URL + '#' + encodePos();
+  const done = () => { $('#shareBox').hidden = true; toast('Link copied. It opens this position and your call for anyone you\u2019ve shared House Call with.'); };
+  const manual = () => showShareBox(`<label class="note" for="shareUrl">Copy this link to share the position:</label><input id="shareUrl" readonly value="${url}">`);
+  try { navigator.clipboard.writeText(url).then(done, manual); } catch (e) { manual(); }
+}
+function renderShareImage() {
+  const W = 600, sc = W / (2 * HW), head = 170, H = Math.round((VIEW_BOT - VIEW_TOP) * sc) + head;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const c = cv.getContext('2d'), cs = getComputedStyle(document.documentElement);
+  const disp = cs.getPropertyValue('--f-display'), body = cs.getPropertyValue('--f-body');
+  const st = viewStones(), sco = scoreOf(st), n = viewShotNo(), team = viewTeam(), v = vFromU(UI.u), T = hogTime(v);
+  c.fillStyle = COL.panel; c.fillRect(0, 0, W, H);
+  c.fillStyle = COL.muted; c.font = `600 18px ${disp}`; c.fillText('HOUSE CALL', 24, 36);
+  c.fillStyle = COL.ink; c.font = `700 32px ${disp}`;
+  c.fillText(n >= 16 ? `End ${S.end + 1} · end complete` : `End ${S.end + 1} · Stone ${n + 1} · ${TEAM[team]} to throw`, 24, 76);
+  c.font = `400 18px ${body}`;
+  c.fillText(`${TEAM[S.hammer]} has the hammer · ${sco.pts ? `${TEAM[sco.team]} sitting ${sco.pts}` : 'nobody counting'}`, 24, 110);
+  if (n < 16) c.fillText(`Call: ${UI.spin > 0 ? 'in-turn' : 'out-turn'}, ${weightName(v).toLowerCase()}${T ? ` (${T.toFixed(1)} s)` : ''}, broom ${Math.abs(UI.broom.x).toFixed(2)} m ${UI.broom.x < 0 ? 'left' : 'right'}`, 24, 140);
+  const keepSC = SC, keepHover = UI.hover; SC = sc; UI.hover = null;
+  try { drawScene(c, W, H - head, 1, pebbleCanvas, head); } finally { SC = keepSC; UI.hover = keepHover; }
+  return new Promise(r => cv.toBlob(r, 'image/png'));
+}
+let downloadsP = null;
+async function saveImage() {
+  if (UI.anim) return;
+  toast('Preparing the image\u2026');
+  const blob = await renderShareImage(), name = `house-call-end${S.end + 1}-stone${Math.min(16, viewShotNo() + 1)}.png`;
+  downloadsP = downloadsP || (window.claude && window.claude.use ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null));
+  const dl = await downloadsP;
+  if (dl) {
+    try { await dl.save({ filename: name, data: blob }); toast('Image saved.'); return; }
+    catch (e) { if (e && e.code === 'declined') { toast('Save canceled.'); return; } }
+  }
+  showShareBox(`<img alt="Picture of the house at this position" src="${URL.createObjectURL(blob)}"><p class="note">Right-click or long-press the picture to save or copy it.</p>`);
+  toast('');
+}
+function checkShared(tok = location.hash.slice(1)) {
+  if (!/^p[A-Za-z0-9_-]{8,}$/.test(tok)) return;
+  const pos = decodePos(tok), b = $('#banner');
+  if (!pos) { toast('That shared link is incomplete, so the position couldn\u2019t be opened.'); return; }
+  b.innerHTML = `<div class="big">Open shared position?</div><div class="note">Stone ${pos.shotNo + 1}, ${pos.stones.length} stone${pos.stones.length === 1 ? '' : 's'} in play. It opens in practice mode and replaces the game on this device.</div><div class="row"><button class="btn primary" id="bOpen">Open position</button><button class="btn" id="bKeep">Keep my game</button></div>`;
+  b.hidden = false;
+  $('#bOpen').onclick = () => {
+    b.hidden = true; UI.aiToken++; UI.busy = false; setThinking(''); UI.review = null;
+    S = newState({ mode: 'practice', hammer: pos.hammer }); S.shotNo = pos.shotNo; S.shared = true;
+    S.stones = pos.stones.map(x => ({ id: S.nextId++, ...x, ang: Math.random() * 6 }));
+    UI.broom = pos.broom; UI.u = pos.u; UI.spin = pos.spin; UI.sugs = null; UI.markup = []; UI.pick = null;
+    toast('Shared position opened in practice mode.'); save(); renderAll(); updatePreview();
+  };
+  $('#bKeep').onclick = () => { b.hidden = true; if (S.endOver && !UI.review) showEndBanner(); };
+}
 
 // ---------- wiring ----------
-const sweepOn = e => { if (!canSweep()) return; if (e && e.pointerId != null) $('#btnSweep').setPointerCapture(e.pointerId); UI.sweeping = true; renderSweepBtn(); };
-const sweepOff = () => { UI.sweeping = false; renderSweepBtn(); };
-$('#btnSweep').addEventListener('pointerdown', e => { e.preventDefault(); sweepOn(e); });
-['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => $('#btnSweep').addEventListener(ev, sweepOff));
-$('#btnSweep').addEventListener('contextmenu', e => e.preventDefault());
-document.addEventListener('keydown', e => { if (e.code === 'Space' && UI.anim && !e.target.matches?.('input,select,textarea')) { e.preventDefault(); if (!e.repeat) sweepOn(); } });
-document.addEventListener('keyup', e => { if (e.code === 'Space') sweepOff(); });
-window.addEventListener('blur', sweepOff);
+for (const t of [0, 1]) {
+  const b = $('#sweep' + t), off = () => { UI.sweeping[t] = false; renderSweepBtn(); };
+  b.addEventListener('pointerdown', e => { e.preventDefault(); if (b.disabled) return; b.setPointerCapture(e.pointerId); UI.sweeping[t] = true; renderSweepBtn(); });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => b.addEventListener(ev, off));
+  b.addEventListener('contextmenu', e => e.preventDefault());
+}
+// Space sweeps for the throwing team (or your team against the computer); A and L are Red and Yellow.
+const keyTeam = e => e.code === 'Space' ? spaceTeam() : S.mode !== 'cpu' && e.code === 'KeyA' ? 0 : S.mode !== 'cpu' && e.code === 'KeyL' ? 1 : -1;
+document.addEventListener('keydown', e => {
+  if (!UI.anim || UI.anim.replay || e.target.matches?.('input,select,textarea')) return;
+  const t = keyTeam(e); if (t < 0) return;
+  e.preventDefault(); if (e.repeat || !humanTeams().includes(t)) return;
+  UI.sweeping[t] = true; renderSweepBtn();
+});
+document.addEventListener('keyup', e => {
+  if (e.code === 'Space') UI.sweeping = [false, false];
+  else { const t = keyTeam(e); if (t >= 0) UI.sweeping[t] = false; }
+  renderSweepBtn();
+});
+window.addEventListener('blur', () => { UI.sweeping = [false, false]; renderSweepBtn(); });
+$('#btnReview').onclick = () => enterReview(Math.max(0, S.log.length - 1));
+$('#rvFirst').onclick = () => reviewGo(0);
+$('#rvPrev').onclick = () => reviewGo(UI.review.p - 1);
+$('#rvNext').onclick = () => reviewGo(UI.review.p + 1);
+$('#rvLast').onclick = () => reviewGo(S.log.length);
+$('#rvReplay').onclick = startReplay;
+$('#rvResume').onclick = resumeFromReview;
+$('#rvExit').onclick = exitReview;
+$('#btnCopyLink').onclick = copyLink;
+$('#btnSaveImg').onclick = saveImage;
+window.addEventListener('hashchange', () => checkShared());
 $('#btnThrow').onclick = () => { if (!controlsLocked()) doThrow(false); };
 $('#btnSuggest').onclick = suggest;
 $('#btnUndo').onclick = undo;
@@ -1335,7 +1672,7 @@ $('#btnNew').onclick = openNew;
 $('#btnRandom').onclick = randomScenario;
 $('#wMinus').onclick = () => stepTime(-1);
 $('#wPlus').onclick = () => stepTime(1);
-$('#handle').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || controlsLocked()) return; UI.spin = +b.dataset.spin; UI.hover = null; renderControls(); renderBroomRead(); updatePreview(); save(); });
+$('#handle').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || !canAnalyze()) return; UI.spin = +b.dataset.spin; UI.hover = null; renderControls(); renderBroomRead(); updatePreview(); save(); });
 $('#pickTeam').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || controlsLocked()) return; UI.pick = +b.dataset.team; UI.sugs = null; renderAll(); updatePreview(); });
 $('#tools').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; UI.tool = b.dataset.tool; main.style.cursor = UI.tool === 'move' ? 'grab' : 'crosshair'; renderControls(); });
 $('#btnClearPen').onclick = () => { UI.markup = []; draw(); };
@@ -1351,6 +1688,9 @@ document.addEventListener('keydown', e => {
   if (e.target.matches?.('input,select,textarea') || !$('#newModal').hidden) return;
   if (e.key === 't' || e.key === 'T') { if (!controlsLocked()) doThrow(false); }
   else if (e.key === 'u' || e.key === 'U') undo();
+  else if (UI.review && !UI.anim && e.target.closest?.('#dial') == null && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+    e.preventDefault(); reviewGo(UI.review.p + (e.key === 'ArrowLeft' ? -1 : 1));
+  } else if (UI.review && e.key === 'Escape') exitReview();
 });
 const mq = matchMedia('(prefers-color-scheme: dark)');
 const retheme = () => { readColors(); makePebble(main.width / DPR, main.height / DPR); draw(); renderHistory(); };
@@ -1368,4 +1708,5 @@ if (S.endOver) showEndBanner();
 else if (S.gameOver) { $('#banner').hidden = true; }
 else if (isCpuTurn()) cpuMove();
 if (S.sample) toast('Sample position: Red throws stone 11 and Yellow has the hammer. Place the broom, set the weight, and throw, or try <b>Suggest a shot</b>.');
+checkShared();
 </script>
