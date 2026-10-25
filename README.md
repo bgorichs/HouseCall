@@ -20,3 +20,7 @@ Everything lives in a single file, `index.html`, with no build step. GitHub Page
 - Data: `data/*.pcn`, in [PCN](https://github.com/shinagaki/pcn) format (World Curling / CURLIT Shot by Shot, positions read from the published diagrams).
 - `python3 tools/build_historic.py` regenerates the dataset embedded in `index.html`. To add a game, drop its `.pcn` file (with `@` board lines) in `data/`, add an entry with the positions to feature in `GAMES`, and re-run.
 - Currently: PyeongChang 2018 women's bronze medal game (GBR–JPN), 10 positions.
+
+## Units and timing
+
+The **Ice & players** card has a metric/imperial switch (distances, speeds, the historic-shot commentary) and a choice of weight timer. The dial can show the **back line to hog line** time (8.23 m, the split curlers time in real games) or hog to hog, with the other shown beneath. Back-to-hog is computed from the stone's hog-line speed, so a real stone, still being pushed at the back line, will time a little longer.
