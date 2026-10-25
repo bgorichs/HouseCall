@@ -418,6 +418,14 @@ body.phone .review .rvlbl{flex-basis:100%;order:-1;font-size:12.5px}
         <label for="playback">Playback</label>
         <select id="playback"><option value="real">Real time</option><option value="fast">Fast</option><option value="instant">Instant</option></select>
       </div>
+      <div class="field">
+        <label for="units">Units</label>
+        <select id="units"><option value="metric">Metric (m, cm)</option><option value="imperial">Imperial (ft, in)</option></select>
+      </div>
+      <div class="field">
+        <label for="timer">Weight timer</label>
+        <select id="timer"><option value="back">Back line to hog line</option><option value="hog">Hog to hog</option></select>
+      </div>
     </div>
   </section>
 </main>
@@ -645,6 +653,20 @@ function uFromV(v) {
 }
 function hogTime(v) { const disc = v * v - 2 * ICE.a * HOGD; return disc <= 0 ? null : (v - Math.sqrt(disc)) / ICE.a; }
 function vFromHogTime(T) { return (HOGD + 0.5 * ICE.a * T * T) / T; }
+// Delivery-end back line to hog line is 8.23 m. The stone is timed at its hog-line speed, so real stones
+// (which are still being pushed and are slower at the back line) read a little longer than this.
+const BACKHOG = 8.23;
+const backHogTime = v => v > 0 ? BACKHOG / v : null;
+const imperial = () => UI.set.units === 'imperial';
+function fmtIn(m) { const t = Math.round(m / 0.0254), ft = Math.floor(t / 12); return ft ? `${ft}\u2032 ${t % 12}\u2033` : `${t}\u2033`; }
+const fmtLen = (m, dp = 2) => imperial() ? fmtIn(m) : m.toFixed(dp) + ' m';
+const fmtSmall = m => imperial() ? (m / 0.0254).toFixed(0) + ' in' : (m * 100).toFixed(0) + ' cm';
+const fmtSpeed = v => imperial() ? (v / 0.3048).toFixed(1) + ' ft/s' : v.toFixed(2) + ' m/s';
+const unitize = t => imperial() ? t.replace(/(\d+(?:\.\d+)?) (cm|m)\b/g, (_, n, u) => u === 'cm' ? Math.round(n / 2.54) + '\u2033' : fmtIn(+n)) : t;
+function timeTag(v) {
+  const hh = hogTime(v), bh = backHogTime(v); if (hh == null) return '';
+  return UI.set.timer === 'hog' ? `${hh.toFixed(1)} s hog\u2013hog \u00b7 ${bh.toFixed(1)} s back\u2013hog` : `${bh.toFixed(1)} s back\u2013hog \u00b7 ${hh.toFixed(1)} s hog\u2013hog`;
+}
 function stopY(v) { return NEAR - v * v / (2 * ICE.a); }
 function weightName(v) {
   const y = stopY(v), T = hogTime(v);
@@ -900,7 +922,7 @@ let S = null;
 const PH = { on: false, moved: [], tab: 'call' };
 const UI = { tool: 'broom', sweeping: [false, false], review: null, sugCtx: null, broom: { x: -0.7, y: 0 }, u: 0.45, spin: 1, pick: null, showPath: false, anim: null, busy: false,
   sugs: null, sugFor: -1, hover: null, preview: null, markup: [], drag: null, aiToken: 0, thinking: '',
-  set: { playback: 'fast', you: 'perfect', cpu: 'competitive' } };
+  set: { playback: 'fast', you: 'perfect', cpu: 'competitive', units: 'metric', timer: 'back' } };
 
 function newState(o) {
   const nEnds = o.nEnds || 8;
@@ -1170,7 +1192,8 @@ function buildDial() {
     h += `<text class="tick-l" x="${x.toFixed(1)}" y="${(y + (anc === 'middle' ? -2 : 4)).toFixed(1)}" text-anchor="${anc}">${t}</text>`;
   }
   h += `<text class="num" id="dNum" x="${DIAL.cx}" y="${DIAL.cy + 8}" text-anchor="middle"></text>`;
-  h += `<text class="cap" x="${DIAL.cx}" y="${DIAL.cy + 26}" text-anchor="middle">hog to hog</text>`;
+  h += `<text class="cap" id="dCap" x="${DIAL.cx}" y="${DIAL.cy + 26}" text-anchor="middle"></text>`;
+  h += `<text class="cap" id="dAlt" x="${DIAL.cx}" y="${DIAL.cy + 42}" text-anchor="middle"></text>`;
   h += `<text class="zl" id="dZone" x="${DIAL.cx}" y="${DIAL.cy - 30}" text-anchor="middle"></text>`;
   h += `<circle class="knob" id="dKnob" r="11"/>`;
   svg.innerHTML = h;
@@ -1197,21 +1220,26 @@ function setWeight(u) { UI.u = clamp(u, 0, 1); UI.hover = null; renderDial(); up
 function stepTime(dir) {
   const v = vFromU(UI.u), T = hogTime(v);
   if (T == null) { setWeight(UI.u + dir * 0.004); return; }
-  setWeight(uFromV(vFromHogTime(T - dir * 0.1)));
+  if (UI.set.timer === 'hog') { setWeight(uFromV(vFromHogTime(T - dir * 0.1))); return; }
+  const bh = backHogTime(v) - dir * 0.1;
+  setWeight(bh > 0.5 ? uFromV(BACKHOG / bh) : UI.u);
 }
 function renderDial() {
   const v = vFromU(UI.u), T = hogTime(v), [kx, ky] = dPt(UI.u, DIAL.r);
   $('#dKnob').setAttribute('cx', kx.toFixed(1)); $('#dKnob').setAttribute('cy', ky.toFixed(1));
-  $('#dNum').textContent = T == null ? '—' : T.toFixed(1) + 's';
+  const hogMain = UI.set.timer === 'hog', bhT = backHogTime(v);
+  $('#dNum').textContent = T == null ? '—' : (hogMain ? T : bhT).toFixed(1) + 's';
+  $('#dCap').textContent = hogMain ? 'hog to hog' : 'back to hog';
+  $('#dAlt').textContent = T == null ? '' : `${(hogMain ? bhT : T).toFixed(1)} s ${hogMain ? 'back to hog' : 'hog to hog'}`;
   const zone = weightName(v); $('#dZone').textContent = zone;
   $('#dial').setAttribute('aria-valuenow', Math.round(UI.u * 100));
-  $('#dial').setAttribute('aria-valuetext', (T == null ? 'Too light' : T.toFixed(1) + ' seconds hog to hog') + ', ' + zone);
+  $('#dial').setAttribute('aria-valuetext', (T == null ? 'Too light' : (hogMain ? T : bhT).toFixed(1) + (hogMain ? ' seconds hog to hog' : ' seconds back line to hog line')) + ', ' + zone);
   const y = stopY(v); let d;
   if (y > HOG - R) d = 'Too light to clear the hog line';
-  else if (y > HOUSE + R) d = `Stops about ${(y - HOUSE).toFixed(1)} m in front of the house`;
-  else if (y >= -HOUSE - R) d = Math.abs(y) < 0.05 ? 'Stops on the tee line' : `Stops about ${Math.abs(y).toFixed(2)} m ${y > 0 ? 'short of' : 'past'} the tee line`;
+  else if (y > HOUSE + R) d = `Stops about ${fmtLen(y - HOUSE, 1)} in front of the house`;
+  else if (y >= -HOUSE - R) d = Math.abs(y) < 0.05 ? 'Stops on the tee line' : `Stops about ${fmtLen(Math.abs(y))} ${y > 0 ? 'short of' : 'past'} the tee line`;
   else if (y >= HACK) d = 'Through the house, stops before the hack';
-  else d = `Takeout weight, ${(v).toFixed(2)} m/s at the hog line`;
+  else d = `Takeout weight, ${fmtSpeed(v)} at the hog line`;
   $('#wdesc').textContent = d;
   const pw = $('#phW');
   if (pw) {
@@ -1390,7 +1418,7 @@ function finishAnim() {
   const handle = A.called.spin > 0 ? 'in-turn' : 'out-turn';
   const T = hogTime(A.called.v0), by = A.sim.sweptBy;
   const swept = [0, 1].filter(t => by[t] > 0.05).map(t => `${TEAM[t]} swept ${by[t].toFixed(1)} s`).join(', ');
-  S.log.push({ n: S.shotNo + 1, team, label: res.label, call: `${handle}, ${weightName(A.called.v0).toLowerCase()}${T ? ' (' + T.toFixed(1) + ' s)' : ''}${swept ? ' · ' + swept : ''}`,
+  S.log.push({ n: S.shotNo + 1, team, label: res.label, call: `${handle}, ${weightName(A.called.v0).toLowerCase()}${T ? ' (' + timeTag(A.called.v0) + ')' : ''}${swept ? ' · ' + swept : ''}`,
     stones: res.stones.map(s => ({ team: s.team, x: s.x, y: s.y })),
     shot: A.shot, ice: { a: ICE.a, K: ICE.K, sweep: ICE.sweep }, sweeps: A.sweeps });
   if (S.puzzle && !S.puzzle.revealed && A.shotNo === S.puzzle.n - 1) { S.puzzle.revealed = true; histDone(S.puzzle.id); setTimeout(histFocus, 0); }
@@ -1610,15 +1638,15 @@ function renderHist() {
   const { g, p } = f, pro = p.pro, me = S.log.find(l => l.n === p.n), final = p.n === 16;
   let h = `<div class="hh">${p.title}</div>
     <div class="hmeta">${g.event}, ${g.stage}<br>End ${p.end} · stone ${p.n} of 16 · <span class="chip t${p.team}" style="margin-right:3px"></span>${TEAM[p.team]} (${g.teams[p.team].short}, ${pro.thrower}) ${p.hammer === p.team ? 'with' : 'without'} the hammer<br>Score entering the end: Red ${p.scoreIn[0]}, Yellow ${p.scoreIn[1]}</div>
-    <p>${p.setup}</p>`;
+    <p>${unitize(p.setup)}</p>`;
   if (!S.puzzle.revealed) {
-    h += `<p class="hprompt">${p.prompt}</p><p class="note">Throw it yourself, or reveal the real call. <b>Suggest a shot</b> counts points in this end only and doesn’t know the score.</p>
+    h += `<p class="hprompt">${unitize(p.prompt)}</p><p class="note">Throw it yourself, or reveal the real call. <b>Suggest a shot</b> counts points in this end only and doesn’t know the score.</p>
       <div class="row2"><button class="btn small" id="hReveal">Reveal the call</button><button class="btn small" id="hReset">Reset position</button></div>`;
   } else {
     const proStones = pro.after.map(([team, x, y]) => ({ team, x, y }));
     h += `<div class="hpro"><div class="label">The call</div><p><b>${pro.task}</b>, ${pro.handle}</p>
       <div class="label">How it was graded</div><p>${pro.gradeText} on World Curling’s 0–4 execution scale</p>
-      <div class="label">What happened</div><p>${pro.notes}</p>`;
+      <div class="label">What happened</div><p>${unitize(pro.notes)}</p>`;
     if (me) {
       const yS = scoreOf(me.stones), pS = scoreOf(proStones), decider = final && f.g.nEnds === p.end;
       const sg = sc => !sc.pts ? 0 : (sc.team === p.team ? sc.pts : -sc.pts);
@@ -1693,7 +1721,7 @@ function renderRead() {
     h += '<ol class="meas">';
     sc.list.slice(0, 6).forEach((e, i) => {
       const counting = i < sc.pts;
-      h += `<li><span class="rk">${i + 1}</span><span class="${counting ? 'cnt' : ''}"><span class="chip t${e.s.team}"></span>${TEAM[e.s.team]}${counting ? ' · counting' : ''}</span><span>${(e.d * 100).toFixed(0)} cm</span></li>`;
+      h += `<li><span class="rk">${i + 1}</span><span class="${counting ? 'cnt' : ''}"><span class="chip t${e.s.team}"></span>${TEAM[e.s.team]}${counting ? ' · counting' : ''}</span><span>${fmtSmall(e.d)}</span></li>`;
     });
     h += '</ol><div class="note">Distance from the pin to the stone’s center.</div>';
   }
@@ -1716,7 +1744,7 @@ function renderSugs() {
     h += `<button class="sug" data-i="${i}"><span class="n">${c.alt ? '\u2022' : i + 1}</span><span class="t">${c.res.label}</span><span class="v">${val}</span>
       <span class="d tags"><span class="pill">${c.alt ? 'Alternative ' + c.cat.toLowerCase() : c.cat}</span><span class="pill diff ${dcls}">${c.difficulty}</span><span>makes it ${Math.round(c.make * 100)}%</span>${played && played.label === c.res.label ? '<span class="pill played">What was played</span>' : ''}</span>
       <span class="d why">${UI.sugCtx ? explainShot(c, UI.sugCtx) : ''}</span>
-      <span class="d">${c.shot.spin > 0 ? 'In-turn' : 'Out-turn'} · ${weightName(c.shot.v0)}${T ? ' ' + T.toFixed(1) + ' s' : ''} · broom ${Math.abs(c.shot.bx).toFixed(2)} m ${c.shot.bx < 0 ? 'left' : 'right'}${c.reply ? `<br>Likely reply: ${c.reply.toLowerCase()}` : ''}</span></button>`;
+      <span class="d">${c.shot.spin > 0 ? 'In-turn' : 'Out-turn'} · ${weightName(c.shot.v0)}${T ? ' · ' + timeTag(c.shot.v0) : ''} · broom ${fmtLen(Math.abs(c.shot.bx))} ${c.shot.bx < 0 ? 'left' : 'right'}${c.reply ? `<br>Likely reply: ${c.reply.toLowerCase()}` : ''}</span></button>`;
   });
   h += `</div><p class="note">Rating is a points estimate for ${TEAM[viewTeam()]} after the opponent’s best reply, averaged over a competitive thrower’s misses. Difficulty is how often that thrower makes the shot. Hover to preview the path, click to load the call.</p>`;
   area.innerHTML = h;
@@ -1741,8 +1769,8 @@ function renderHistory() {
 }
 function renderBroomRead() {
   const b = UI.broom;
-  const side = Math.abs(b.x) < 0.03 ? 'on the center line' : `${Math.abs(b.x).toFixed(2)} m ${b.x < 0 ? 'left' : 'right'} of center`;
-  const depth = Math.abs(b.y) < 0.05 ? 'on the tee line' : `${Math.abs(b.y).toFixed(2)} m ${b.y < 0 ? 'behind' : 'in front of'} the tee`;
+  const side = Math.abs(b.x) < 0.03 ? 'on the center line' : `${fmtLen(Math.abs(b.x))} ${b.x < 0 ? 'left' : 'right'} of center`;
+  const depth = Math.abs(b.y) < 0.05 ? 'on the tee line' : `${fmtLen(Math.abs(b.y))} ${b.y < 0 ? 'behind' : 'in front of'} the tee`;
   $('#broomRead').textContent = `Broom: ${side}, ${depth}. ${UI.spin > 0 ? 'In-turn curls right.' : 'Out-turn curls left.'}`;
 }
 const spaceTeam = () => { const h = humanTeams(); return h.length === 1 ? h[0] : UI.anim && !UI.anim.replay ? UI.anim.team : throwingTeam(); };
@@ -1792,10 +1820,10 @@ function sweepGain() { // extra distance and curl removed when a guard-weight st
 function renderIce() {
   const g = sweepGain(), pct = Math.round(ICE.sweep * 100);
   $('#sweepPow').value = ICE.sweep;
-  $('#sweepPowV').textContent = pct ? `${pct}% · swept full length: +${g.dist.toFixed(1)} m, ${Math.round(g.curl * 100)} cm less curl` : 'Off';
-  $('#iceSpeed').value = ICE.drawT; $('#iceSpeedV').textContent = ICE.drawT.toFixed(1) + ' s';
-  $('#iceCurl').value = ICE.curl; $('#iceCurlV').textContent = `${ICE.curl.toFixed(2)} m (${(ICE.curl / 0.3048).toFixed(1)} ft)`;
-  $('#youLvl').value = UI.set.you; $('#cpuLvl').value = UI.set.cpu; $('#playback').value = UI.set.playback;
+  $('#sweepPowV').textContent = pct ? `${pct}% · swept full length: +${fmtLen(g.dist, 1)}, ${fmtSmall(g.curl)} less curl` : 'Off';
+  $('#iceSpeed').value = ICE.drawT; $('#iceSpeedV').textContent = `${ICE.drawT.toFixed(1)} s hog\u2013hog (${backHogTime(vFromHogTime(ICE.drawT)).toFixed(1)} s back\u2013hog)`;
+  $('#iceCurl').value = ICE.curl; $('#iceCurlV').textContent = (imperial() ? `${(ICE.curl / 0.3048).toFixed(1)} ft` : `${ICE.curl.toFixed(2)} m (${(ICE.curl / 0.3048).toFixed(1)} ft)`);
+  $('#youLvl').value = UI.set.you; $('#cpuLvl').value = UI.set.cpu; $('#playback').value = UI.set.playback; $('#units').value = UI.set.units; $('#timer').value = UI.set.timer;
 }
 function renderReviewBar() {
   const bar = $('#reviewBar'), rv = UI.review; bar.hidden = !rv; if (!rv) return;
@@ -1917,7 +1945,7 @@ function renderShareImage() {
   c.fillText(n >= 16 ? `End ${S.end + 1} · end complete` : `End ${S.end + 1} · Stone ${n + 1} · ${TEAM[team]} to throw`, 24, 76);
   c.font = `400 18px ${body}`;
   c.fillText(`${TEAM[S.hammer]} has the hammer · ${sco.pts ? `${TEAM[sco.team]} sitting ${sco.pts}` : 'nobody counting'}`, 24, 110);
-  if (n < 16) c.fillText(`Call: ${UI.spin > 0 ? 'in-turn' : 'out-turn'}, ${weightName(v).toLowerCase()}${T ? ` (${T.toFixed(1)} s)` : ''}, broom ${Math.abs(UI.broom.x).toFixed(2)} m ${UI.broom.x < 0 ? 'left' : 'right'}`, 24, 140);
+  if (n < 16) c.fillText(`Call: ${UI.spin > 0 ? 'in-turn' : 'out-turn'}, ${weightName(v).toLowerCase()}${T ? ` (${timeTag(v)})` : ''}, broom ${fmtLen(Math.abs(UI.broom.x))} ${UI.broom.x < 0 ? 'left' : 'right'}`, 24, 140);
   const keepSC = SC, keepHover = UI.hover; SC = sc; UI.hover = null;
   try { drawScene(c, W, H - head, 1, pebbleCanvas, head); } finally { SC = keepSC; UI.hover = keepHover; }
   return new Promise(r => cv.toBlob(r, 'image/png'));
@@ -2008,6 +2036,8 @@ $('#iceCurl').oninput = e => { ICE.curl = +e.target.value; calibrateIce(); UI.su
 $('#youLvl').onchange = e => { UI.set.you = e.target.value; save(); };
 $('#cpuLvl').onchange = e => { UI.set.cpu = e.target.value; save(); };
 $('#playback').onchange = e => { UI.set.playback = e.target.value; save(); };
+$('#units').onchange = e => { UI.set.units = e.target.value; save(); renderIce(); renderAll(); };
+$('#timer').onchange = e => { UI.set.timer = e.target.value; save(); renderIce(); renderAll(); };
 document.addEventListener('keydown', e => {
   if (e.target.matches?.('input,select,textarea') || !$('#newModal').hidden || !$('#histModal').hidden) return;
   if (e.key === 't' || e.key === 'T') { if (!controlsLocked()) doThrow(false); }
