@@ -542,7 +542,7 @@ function createSim(stones, shot, rec) {
   return sim;
 }
 function snapSim(sim) {
-  const bs = sim.bodies, n = bs.length, p = new Float32Array(n * 3);
+  const bs = sim.bodies, n = bs.length, p = new Array(n * 3);
   for (let i = 0; i < n; i++) { const b = bs[i]; p[i * 3] = b.out ? NaN : b.x; p[i * 3 + 1] = b.y; p[i * 3 + 2] = b.ang; }
   sim.frames.push({ t: sim.time, p });
 }
@@ -556,7 +556,8 @@ function stepSim(sim, sweep) {
   for (let i = 0; i < n; i++) if (bs[i].mv && !bs[i].out) { movers++; vmax = Math.max(vmax, Math.hypot(bs[i].vx, bs[i].vy)); }
   if (!movers || sim.steps >= 12000) {
     sim.done = true;
-    if (!t.out && !t.hit && t.y > HOG - R) { t.out = true; t.reason = 'hog'; if (sim.frames) snapSim(sim); }
+    if (!t.out && !t.hit && t.y > HOG - R) { t.out = true; t.reason = 'hog'; }
+    if (sim.frames) snapSim(sim);
     return;
   }
   if (movers === 1 && t.mv && !t.out) { for (let i = 0; i < n - 1; i++) { const b = bs[i]; if (b.out) continue; const d = Math.hypot(b.x - t.x, b.y - t.y); if (d < gap) gap = d; } }
@@ -606,7 +607,7 @@ function stepSim(sim, sweep) {
     }
   }
   sim.time += dt; sim.steps++;
-  if (sim.frames) snapSim(sim);
+  if (sim.frames && (sim.steps & 3) === 0) snapSim(sim);   // the path is drawn from every 4th step
 }
 function simulate(stones, shot, rec) {
   const sim = createSim(stones, shot, rec);
@@ -779,7 +780,12 @@ function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let
 function gauss(r) { let u = 0; while (!u) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); }
 const LEVELS = { perfect: { v: 0, x: 0 }, elite: { v: 0.005, x: 0.04 }, competitive: { v: 0.009, x: 0.07 }, club: { v: 0.016, x: 0.12 } };
 function perturb(shot, lv, r) { return { ...shot, v0: shot.v0 * (1 + gauss(r) * lv.v), bx: shot.bx + gauss(r) * lv.x }; }
-const tick = () => new Promise(r => setTimeout(r, 0));
+// Yield to the browser without setTimeout's 4 ms clamp.
+const tickCh = new MessageChannel(); let tickRes = null;
+tickCh.port1.onmessage = () => { const r = tickRes; tickRes = null; r && r(); };
+const tick = () => new Promise(r => { tickRes = r; tickCh.port2.postMessage(0); });
+let sliceT = 0;
+const sliceUp = () => { const n = performance.now(); if (n - sliceT < 8) return false; sliceT = n; return true; };
 
 function shotCategory(label) {
   if (/^Draw/.test(label)) return 'Draw';
@@ -802,7 +808,7 @@ async function findShots(ctx, onProg = () => {}, alive = () => true) {
   for (const spin of [1, -1]) for (const x of xs) for (const u of us) {
     const sh = mkShot(team, x, u, spin), r = resolveShot(stones, sh, shotNo);
     C.push({ shot: sh, res: r, v: ev(r.stones, team, done), cat: shotCategory(r.label) });
-    if (++n % 40 === 0) { onProg(0.35 * n / total); await tick(); if (!alive()) return null; }
+    if (++n % 4 === 0 && sliceUp()) { onProg(0.35 * n / total); await tick(); if (!alive()) return null; }
   }
   C.sort((a, b) => b.v - a.v);
   const similar = (a, b) => a.res.label === b.res.label && a.shot.spin === b.shot.spin &&
@@ -829,6 +835,7 @@ async function findShots(ctx, onProg = () => {}, alive = () => true) {
     for (let k = 0; k < NS; k++) {
       const rr = resolveShot(stones, perturb(c.shot, lv, r), shotNo), v = ev(rr.stones, team, done);
       sum += v; if (shotCategory(rr.label) === c.cat && v >= c.v - 0.3) made++;
+      if (k % 4 === 3 && sliceUp()) { await tick(); if (!alive()) return null; }
     }
     c.robust = sum / NS; c.make = made / NS; c.difficulty = difficultyOf(c.make);
   }
@@ -842,7 +849,7 @@ async function findShots(ctx, onProg = () => {}, alive = () => true) {
         const r = resolveShot(c.res.stones, mkShot(O, x, u, spin), done);
         const v = ev(r.stones, O, done + 1);
         if (v > best) { best = v; bestLabel = r.label; }
-        if (++k % 40 === 0) { onProg(0.45 + 0.55 * k / tot); await tick(); if (!alive()) return null; }
+        if (++k % 4 === 0 && sliceUp()) { onProg(0.45 + 0.55 * k / tot); await tick(); if (!alive()) return null; }
       }
       c.reply = bestLabel; c.mm = -best;
       c.score = c.mm + (c.robust - c.v) - RISK * (1 - c.make);   // expected cost of misses, plus a skip's dislike of long odds
@@ -963,9 +970,15 @@ const lastEnd = () => S.end >= S.nEnds - 1;
 const totals = t => S.scores[t].reduce((a, b) => a + (b || 0), 0);
 
 // ---------- persistence ----------
-function save() {
+function saveNow() {
   try { localStorage.setItem('housecall.v1', JSON.stringify({ S, ice: { drawT: ICE.drawT, curl: ICE.curl, sweep: ICE.sweep }, set: UI.set, broom: UI.broom, u: UI.u, spin: UI.spin })); } catch (e) {}
 }
+// Saving serializes the whole game (including undo history), so coalesce bursts such as a dragged slider.
+let saveTimer = 0;
+function save() { if (!saveTimer) saveTimer = setTimeout(() => { saveTimer = 0; saveNow(); }, 300); }
+function flushSave() { if (saveTimer) { clearTimeout(saveTimer); saveTimer = 0; saveNow(); } }
+addEventListener('pagehide', flushSave);
+document.addEventListener('visibilitychange', () => { if (document.hidden) flushSave(); });
 function load() {
   try {
     const d = JSON.parse(localStorage.getItem('housecall.v1') || 'null');
@@ -990,6 +1003,7 @@ const main = $('#main'), mini = $('#mini');
 const mctx = main.getContext('2d'), nctx = mini.getContext('2d');
 let SC = 60, MSC = 10, DPR = 1, pebbleCanvas = null;
 
+let layoutKey = '';
 function layout() {
   const wrap = $('.sheet-col'); const cw = wrap.clientWidth;
   if (cw < 120) return;
@@ -999,8 +1013,11 @@ function layout() {
   const need = H * (mainAsp + miniAsp) + 10;
   if (need > cw) H = (cw - 10) / (mainAsp + miniAsp);
   SC = H / viewH; MSC = H / (SHEET_BOT - SHEET_TOP);
-  DPR = window.devicePixelRatio || 1;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);   // 3x phone screens would quadruple the pixels for no visible gain
   const mw = Math.floor(2 * HW * SC), mh = Math.floor(H), nw = Math.max(18, Math.floor(2 * HW * MSC));
+  const key = `${mw}x${mh}x${nw}@${DPR}`;
+  if (key === layoutKey && pebbleCanvas) return;   // resize noise (address bar, dock) that changes nothing
+  layoutKey = key;
   main.style.width = mw + 'px'; main.style.height = mh + 'px'; main.width = mw * DPR; main.height = mh * DPR;
   mini.style.width = nw + 'px'; mini.style.height = mh + 'px'; mini.width = nw * DPR; mini.height = mh * DPR;
   makePebble(mw, mh);
@@ -1008,8 +1025,13 @@ function layout() {
 }
 function makePebble(w, h) {
   pebbleCanvas = document.createElement('canvas'); pebbleCanvas.width = w * DPR; pebbleCanvas.height = h * DPR;
-  const c = pebbleCanvas.getContext('2d'), r = rng(42); c.fillStyle = COL.pebble;
-  for (let i = 0; i < w * h / 55; i++) { c.beginPath(); c.arc(r() * w * DPR, r() * h * DPR, (0.5 + r() * 1.1) * DPR, 0, 7); c.fill(); }
+  // draw one small tile of specks, then repeat it across the sheet
+  const T = 160, tile = document.createElement('canvas'); tile.width = tile.height = T * DPR;
+  const t = tile.getContext('2d'), r = rng(42); t.fillStyle = COL.pebble;
+  for (let i = 0; i < T * T / 55; i++) { t.beginPath(); t.arc(r() * T * DPR, r() * T * DPR, (0.5 + r() * 1.1) * DPR, 0, 7); t.fill(); }
+  const c = pebbleCanvas.getContext('2d');
+  for (let y = 0; y < h; y += T) for (let x = 0; x < w; x += T) c.drawImage(tile, x * DPR, y * DPR);
+  bgKey = '';
 }
 const sx = x => (x + HW) * SC, sy = y => (y - VIEW_TOP) * SC;
 const wx = px => px / SC - HW, wy = py => py / SC + VIEW_TOP;
@@ -1019,6 +1041,24 @@ function drawHouse(ctx, s, cx, cy) {
   const ring = (r, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(cx, cy, r * s, 0, Math.PI * 2); ctx.fill(); };
   ring(HOUSE, COL.blue); ring(R8, COL.white); ring(R4, COL.red); ring(RBUT, COL.white);
 }
+// A stone's body (shadow, granite, colour ring) never changes, so draw it once per team and size and blit it.
+const spriteCache = new Map();
+function stoneSprite(team, r, k) {
+  const key = `${team}|${r.toFixed(2)}|${k}|${COL.t0}|${COL.t1}`;
+  let sp = spriteCache.get(key);
+  if (sp) return sp;
+  if (spriteCache.size > 40) spriteCache.clear();
+  const pad = Math.ceil(r * 1.25), cv = document.createElement('canvas'); cv.width = cv.height = Math.ceil(pad * 2 * k);
+  const c = cv.getContext('2d'); c.scale(k, k); c.translate(pad, pad);
+  c.fillStyle = 'rgba(10,25,40,.22)'; c.beginPath(); c.arc(r * 0.08, r * 0.12, r * 1.02, 0, Math.PI * 2); c.fill();
+  const g = c.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
+  g.addColorStop(0, '#9aa3ab'); g.addColorStop(0.7, '#6f7880'); g.addColorStop(1, '#4b535a');
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill();
+  c.fillStyle = team ? COL.t1 : COL.t0; c.beginPath(); c.arc(0, 0, r * 0.66, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = Math.max(1, r * 0.06); c.stroke();
+  spriteCache.set(key, sp = { cv, pad });
+  return sp;
+}
 function drawStone(ctx, x, y, team, ang, s, alpha = 1, ghost = false) {
   const r = R * s;
   ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y);
@@ -1026,12 +1066,8 @@ function drawStone(ctx, x, y, team, ang, s, alpha = 1, ghost = false) {
     ctx.setLineDash([4, 3]); ctx.lineWidth = 2; ctx.strokeStyle = team ? COL.t1 : COL.t0;
     ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); return;
   }
-  ctx.fillStyle = 'rgba(10,25,40,.22)'; ctx.beginPath(); ctx.arc(r * 0.08, r * 0.12, r * 1.02, 0, Math.PI * 2); ctx.fill();
-  const g = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
-  g.addColorStop(0, '#9aa3ab'); g.addColorStop(0.7, '#6f7880'); g.addColorStop(1, '#4b535a');
-  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = team ? COL.t1 : COL.t0; ctx.beginPath(); ctx.arc(0, 0, r * 0.66, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = Math.max(1, r * 0.06); ctx.stroke();
+  const sp = stoneSprite(team, r, ctx.getTransform().a), pad = sp.pad;
+  ctx.drawImage(sp.cv, -pad, -pad, pad * 2, pad * 2);
   ctx.rotate(ang);
   ctx.fillStyle = 'rgba(20,25,30,.78)';
   const hw = r * 0.95, hh = r * 0.2; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-hw / 2, -hh / 2, hw, hh, hh / 2) : ctx.rect(-hw / 2, -hh / 2, hw, hh); ctx.fill();
@@ -1081,7 +1117,7 @@ function drawPath(ctx, res, sim) {
     ctx.save(); ctx.strokeStyle = b.thrown ? (b.team ? COL.t1 : COL.t0) : COL.muted; ctx.lineWidth = b.thrown ? 2.5 : 1.8;
     ctx.setLineDash(b.thrown ? [] : [5, 4]); ctx.globalAlpha = 0.85; ctx.beginPath();
     let started = false;
-    for (let f = 0; f < fr.length; f += 2) {
+    for (let f = 0; f < fr.length; f++) {
       const x = fr[f].p[i * 3], y = fr[f].p[i * 3 + 1];
       if (Number.isNaN(x) || y > VIEW_BOT + 1) { started = false; continue; }
       if (!started) { ctx.moveTo(sx(x), sy(y)); started = true; } else ctx.lineTo(sx(x), sy(y));
@@ -1092,16 +1128,30 @@ function drawPath(ctx, res, sim) {
 }
 function draw() {
   if (!S || !COL.ice) return;
-  drawScene(mctx, main.width / DPR, main.height / DPR, DPR, pebbleCanvas);
+  drawScene(mctx, main.width / DPR, main.height / DPR, DPR, pebbleCanvas, 0, true);
   drawMini();
   drawLoupe();
 }
-function drawScene(ctx, w, h, scale, pebble, oy = 0) {
+// The ice, house, lines and labels only change with the layout, theme or free guard zone, so the sheet
+// keeps them in an offscreen canvas and blits it each frame.
+let bgCanvas = null, bgKey = '';
+function drawScene(ctx, w, h, scale, pebble, oy = 0, cacheBg = false) {
+  if (cacheBg) {
+    const fgz = viewShotNo() < 5 && !UI.anim, key = `${w}x${h}@${scale}|${SC}|${fgz}|${COL.ice}|${COL.blue}|${COL.red}|${COL.white}|${COL.mark}|${COL.fgz}|${COL.muted}`;
+    if (key !== bgKey || !bgCanvas) {
+      bgCanvas = bgCanvas || document.createElement('canvas'); bgCanvas.width = w * scale; bgCanvas.height = h * scale;
+      drawBackground(bgCanvas.getContext('2d'), w, h, scale, pebble, 0, fgz); bgKey = key;
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(bgCanvas, 0, 0); ctx.setTransform(scale, 0, 0, scale, 0, oy * scale);
+  } else drawBackground(ctx, w, h, scale, pebble, oy, viewShotNo() < 5 && !UI.anim);
+  drawForeground(ctx);
+}
+function drawBackground(ctx, w, h, scale, pebble, oy, fgz) {
   ctx.setTransform(scale, 0, 0, scale, 0, oy * scale);
   ctx.fillStyle = COL.ice; ctx.fillRect(0, 0, w, h);
   if (pebble) ctx.drawImage(pebble, 0, 0, w, h);
   // free guard zone tint while it protects guards
-  if (viewShotNo() < 5 && !UI.anim) {
+  if (fgz) {
     ctx.fillStyle = COL.fgz; ctx.fillRect(0, sy(0), w, sy(HOG) - sy(0));
     ctx.fillStyle = COL.muted; ctx.font = '600 11px ' + getComputedStyle(document.body).getPropertyValue('--f-display');
     ctx.textAlign = 'center'; ctx.fillText('FREE GUARD ZONE', w / 2, sy(HOG) - 8);
@@ -1114,6 +1164,8 @@ function drawScene(ctx, w, h, scale, pebble, oy = 0) {
   ctx.strokeStyle = COL.mark; ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.arc(sx(0), sy(HACK), 4, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
   ctx.fillStyle = COL.muted; ctx.globalAlpha = 0.8; ctx.font = '600 10px sans-serif'; ctx.textAlign = 'left';
   ctx.fillText('HOG', 6, sy(HOG) - 6); ctx.fillText('TEE', 6, sy(0) - 4); ctx.fillText('BACK', 6, sy(BACK) - 4); ctx.globalAlpha = 1;
+}
+function drawForeground(ctx) {
   // markup
   ctx.strokeStyle = COL.pen; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   for (const st of UI.markup) { if (st.length < 2) continue; ctx.beginPath(); ctx.moveTo(sx(st[0][0]), sy(st[0][1])); for (const p of st) ctx.lineTo(sx(p[0]), sy(p[1])); ctx.stroke(); }
@@ -1392,10 +1444,10 @@ function animStep(now) {
   // simulation is just ahead of the clock and draw positions interpolated between the last two steps
   A.clock += dt * (sim.thrown.y > VIEW_BOT + 0.4 ? sp.out : sp.inn);
   while (!sim.done && sim.time < A.clock) {
-    A.prev = sim.bodies.flatMap(b => [b.x, b.y, b.ang]); A.prevT = sim.time;
+    const P = A.prev || (A.prev = []); let j = 0; for (const b of sim.bodies) { P[j++] = b.x; P[j++] = b.y; P[j++] = b.ang; } A.prevT = sim.time;
     stepSim(sim, A.replay ? replayMask(A) : liveMask(A));
   }
-  renderSweepBtn();
+  if (sim.steps !== A.btnStep) { A.btnStep = sim.steps; renderSweepBtn(); }
   if (sim.done && A.clock >= sim.time) { finishAnim(); return; }
   draw(); requestAnimationFrame(animStep);
 }
@@ -1756,8 +1808,11 @@ function renderSugs() {
     b.addEventListener('click', () => applySug(c));
   });
 }
-function renderHistory() {
-  const el = $('#history');
+let histRef = null, histLen = -1, histSel = -2;
+function renderHistory(force) {
+  const el = $('#history'), selNow = UI.review ? UI.review.p : -1;
+  if (!force && S.log === histRef && S.log.length === histLen && selNow === histSel) return;
+  histRef = S.log; histLen = S.log.length; histSel = selNow;
   if (!S.log.length) { el.innerHTML = `<li class="empty">No stones thrown yet this end.</li>`; return; }
   const sel = UI.review ? UI.review.p : -1;
   el.innerHTML = S.log.slice().reverse().map((l, i) => `<li class="hitem${S.log.length - 1 - i === sel ? ' sel' : ''}" data-p="${S.log.length - 1 - i}" tabindex="0" role="button" title="Review the position before this stone"><canvas data-i="${S.log.length - 1 - i}"></canvas><div><div class="who"><span class="chip t${l.team}"></span>Stone ${l.n} · ${TEAM[l.team]}</div><div>${l.label}</div><div class="sub">Called ${l.call}</div></div></li>`).join('');
@@ -2048,10 +2103,11 @@ document.addEventListener('keydown', e => {
   } else if (UI.review && e.key === 'Escape') exitReview();
 });
 const mq = matchMedia('(prefers-color-scheme: dark)');
-const retheme = () => { readColors(); makePebble(main.width / DPR, main.height / DPR); draw(); renderHistory(); };
+const retheme = () => { readColors(); makePebble(main.width / DPR, main.height / DPR); draw(); renderHistory(true); };
 mq.addEventListener ? mq.addEventListener('change', retheme) : mq.addListener(retheme);
 new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-new ResizeObserver(() => layout()).observe($('.sheet-col'));
+let roQueued = false;
+new ResizeObserver(() => { if (roQueued) return; roQueued = true; requestAnimationFrame(() => { roQueued = false; layout(); }); }).observe($('.sheet-col'));
 
 // ---------- phone layout ----------
 // The same controls and panels as the desktop page, moved into a dock, a tab bar and bottom sheets.
