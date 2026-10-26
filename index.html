@@ -1244,7 +1244,8 @@ function renderDial() {
   const pw = $('#phW');
   if (pw) {
     pw.value = Math.round(UI.u * 1000); pw.disabled = !canAnalyze();
-    $('#phT').textContent = T == null ? '\u2014' : T.toFixed(1) + 's'; $('#phZone').textContent = zone;
+    $('#phT').textContent = T == null ? '\u2014' : (hogMain ? T : bhT).toFixed(1) + 's';
+    $('#phZone').textContent = T == null ? zone : `${zone} \u00b7 ${hogMain ? bhT.toFixed(1) + ' s back\u2013hog' : T.toFixed(1) + ' s hog\u2013hog'}`;
     $('#phMinus').disabled = $('#phPlus').disabled = !canAnalyze();
   }
 }
@@ -1289,10 +1290,10 @@ function loupeLabel() {
   const d = UI.drag;
   if (d && d.kind === 'stone') {
     const dist = Math.hypot(d.s.x, d.s.y);
-    return `${TEAM[d.s.team]} stone · ${dist - R <= HOUSE ? `${Math.round(dist * 100)} cm from the pin` : `${(d.s.y).toFixed(2)} m above the tee`}`;
+    return `${TEAM[d.s.team]} stone · ${dist - R <= HOUSE ? `${fmtSmall(dist)} from the pin` : `${fmtLen(d.s.y)} above the tee`}`;
   }
-  const b = UI.broom, side = Math.abs(b.x) < 0.03 ? 'on center' : `${Math.abs(b.x).toFixed(2)} m ${b.x < 0 ? 'left' : 'right'}`;
-  const depth = Math.abs(b.y) < 0.05 ? 'tee line' : `${Math.abs(b.y).toFixed(2)} m ${b.y < 0 ? 'back' : 'up'}`;
+  const b = UI.broom, side = Math.abs(b.x) < 0.03 ? 'on center' : `${fmtLen(Math.abs(b.x))} ${b.x < 0 ? 'left' : 'right'}`;
+  const depth = Math.abs(b.y) < 0.05 ? 'tee line' : `${fmtLen(Math.abs(b.y))} ${b.y < 0 ? 'back' : 'up'}`;
   return `Broom ${side} · ${depth}`;
 }
 // Called at the end of every draw, so it always magnifies what the sheet shows (broom, stones, path).
