@@ -238,8 +238,9 @@ body.phone .toast:empty{display:none}
 .ph-w{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:8px;align-items:center}
 .ph-step{height:44px;justify-content:center;font-size:22px;padding:0}
 .ph-wread{display:flex;gap:8px;align-items:baseline;justify-content:center;font-variant-numeric:tabular-nums;min-width:0;white-space:nowrap;overflow:hidden}
+.ph-wread{gap:14px}
 .ph-wread b{font-family:var(--f-display);font-size:24px;line-height:1}
-.ph-wread span{font-family:var(--f-display);font-size:15px;color:var(--accent);text-transform:uppercase;letter-spacing:.04em}
+.ph-wread span{font-family:var(--f-display);font-size:22px;font-weight:600;line-height:1;color:var(--accent)}
 #phW{-webkit-appearance:none;appearance:none;width:100%;height:12px;border-radius:6px;margin:8px 0 2px;background:linear-gradient(to right,var(--z-guard) 0 30%,var(--z-house) 30% 62%,var(--z-board) 62% 72%,var(--z-hit) 72% 100%)}
 #phW::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:30px;height:30px;border-radius:50%;background:var(--panel);border:3px solid var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.25)}
 #phW::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--panel);border:3px solid var(--ink)}
@@ -459,7 +460,7 @@ body.phone .review .rvlbl{flex-basis:100%;order:-1;font-size:12.5px}
     <div class="ph-w">
       <button class="btn ph-step" id="phMinus" aria-label="Lighter by 0.1 second">&minus;</button>
       <div>
-        <div class="ph-wread"><b id="phT"></b><span id="phZone"></span></div>
+        <div class="ph-wread"><b id="phZone"></b><span id="phT"></span></div>
         <input type="range" id="phW" min="0" max="1000" step="1" aria-label="Weight">
         <div class="ph-zones" aria-hidden="true"><span style="left:15%">Guard</span><span style="left:46%">House</span><span style="left:67%">Board</span><span style="left:86%">Hit</span></div>
       </div>
@@ -1319,8 +1320,9 @@ function renderDial() {
   const pw = $('#phW');
   if (pw) {
     pw.value = Math.round(UI.u * 1000); pw.disabled = !canAnalyze();
-    $('#phT').textContent = T == null ? '\u2014' : (hogMain ? T : bhT).toFixed(1) + 's';
-    $('#phZone').textContent = T == null ? zone : `${zone} \u00b7 ${hogMain ? bhT.toFixed(1) + ' s back\u2013hog' : T.toFixed(1) + ' s hog\u2013hog'}`;
+    // zone, then hog-to-hog / back-to-hog seconds, e.g. "Back 8  13.0s/3.8s"
+    $('#phZone').textContent = zone;
+    $('#phT').textContent = T == null ? '\u2014' : `${T.toFixed(1)}s/${bhT.toFixed(1)}s`;
     $('#phMinus').disabled = $('#phPlus').disabled = !canAnalyze();
   }
 }
