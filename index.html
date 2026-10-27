@@ -226,11 +226,11 @@ body.phone .brand svg{width:24px;height:24px}
 body.phone .status{font-size:12.5px;gap:2px 8px;flex:1 1 auto;line-height:1.3}
 body.phone .status .st-mode{display:none}
 body.phone .mini-score{font-size:17px}
-.ph-undo{padding:8px 12px;font-size:17px;flex:none}
+.ph-undo{padding:8px 12px;font-size:17px;flex:none;min-width:44px;min-height:44px;justify-content:center}
 body.phone main.grid{flex:1 1 auto;min-height:0;display:block;padding:4px 16px;position:relative}
 body.phone .col{display:none}
 body.phone .sheet-col{height:100%;justify-content:center}
-body.phone .toast{position:absolute;bottom:10px;left:16px;right:16px;margin:0 auto;z-index:5;max-width:none;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 10px;box-shadow:0 4px 14px rgba(0,0,0,.15);font-size:13px}
+body.phone .toast{position:absolute;bottom:10px;left:16px;right:16px;margin:0 auto;z-index:5;max-width:none;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 10px;box-shadow:0 4px 14px rgba(0,0,0,.15);font-size:12.5px;line-height:1.35;pointer-events:none;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 body.phone .toast:empty{display:none}
 .ph-dock{background:var(--panel);border-top:1px solid var(--line);padding:8px 16px;display:grid;gap:8px}
 .ph-dock.anim .ph-call{display:none}
@@ -238,34 +238,58 @@ body.phone .toast:empty{display:none}
 .ph-w{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:8px;align-items:center}
 .ph-step{height:44px;justify-content:center;font-size:22px;padding:0}
 .ph-wread{display:flex;gap:8px;align-items:baseline;justify-content:center;font-variant-numeric:tabular-nums;min-width:0;white-space:nowrap;overflow:hidden}
+.ph-wread{gap:14px}
 .ph-wread b{font-family:var(--f-display);font-size:24px;line-height:1}
-.ph-wread span{font-family:var(--f-display);font-size:15px;color:var(--accent);text-transform:uppercase;letter-spacing:.04em}
+.ph-wread span{font-family:var(--f-display);font-size:22px;font-weight:600;line-height:1;color:var(--accent)}
 #phW{-webkit-appearance:none;appearance:none;width:100%;height:12px;border-radius:6px;margin:8px 0 2px;background:linear-gradient(to right,var(--z-guard) 0 30%,var(--z-house) 30% 62%,var(--z-board) 62% 72%,var(--z-hit) 72% 100%)}
 #phW::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:30px;height:30px;border-radius:50%;background:var(--panel);border:3px solid var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.25)}
 #phW::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--panel);border:3px solid var(--ink)}
 #phW:disabled{opacity:.5}
 .ph-zones{position:relative;height:14px;font-family:var(--f-display);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .ph-zones span{position:absolute;transform:translateX(-50%)}
-.ph-row2{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.ph-row2 .seg button{padding:10px}
-.ph-row2 .check{font-size:13px;margin:0!important}
-.ph-row2 .throw{flex:1 1 130px;margin:0;width:auto;min-height:44px}
+/* dock: one row for handle / path / thrower, then a full-width Throw */
+.ph-row2{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap}
+.ph-row2 .seg{min-height:46px}
+.ph-row2 #handle{flex:1 1 0;min-width:0}
+.ph-row2 #handle button{flex:1 1 0;justify-content:center;padding:0 6px;font-size:14px;white-space:nowrap}
+.ph-row2 #pickTeam{flex:0 0 auto}
+.ph-row2 #pickTeam button{padding:0 14px;font-size:0}
+.ph-row2 #pickTeam .chip{width:16px;height:16px;margin:0}
+body.phone #pickTeam button[aria-pressed="false"]{display:none}
+body.phone #pickTeam button::after{content:"\21C5";margin-left:8px;font-size:17px;opacity:.75}
+.ph-row2 .check{position:relative;margin:0!important;min-height:46px;padding:0 14px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-weight:700;justify-content:center;background:var(--panel)}
+.ph-row2 .check input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.ph-row2 .check:has(input:checked){background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.ph-row2 .check:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.ph-row2 .throw{flex:1 1 100%;margin:0;width:auto;min-height:48px;font-size:16px}
 body.phone .sweeps{width:100%}
 body.phone .sweeps{flex-wrap:nowrap;align-items:stretch}
 body.phone .sweep{flex:1 1 0;min-width:0;min-height:88px;font-size:15px;line-height:1.25}
 body.phone .sweep kbd{display:none}
 body.phone .review{padding:6px;gap:4px}
 body.phone .review .rvlbl{flex-basis:100%;order:-1;font-size:12.5px}
-.ph-tabs{display:grid;grid-template-columns:repeat(5,1fr);background:var(--panel);border-top:1px solid var(--line)}
-.ph-tabs button{border:0;background:none;padding:6px 0 8px;display:grid;justify-items:center;gap:2px;font-size:11px;font-weight:700;color:var(--muted);min-height:52px}
-.ph-tabs button[aria-pressed="true"]{color:var(--accent)}
+.ph-tabs{position:relative;z-index:21;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:var(--panel);border-top:1px solid var(--line);padding:4px 6px calc(4px + env(safe-area-inset-bottom,0px))}
+.ph-tabs button{border:0;background:none;border-radius:10px;padding:6px 0;display:grid;justify-items:center;align-content:center;gap:2px;font-size:11.5px;font-weight:700;color:var(--muted);min-height:54px}
+.ph-tabs button[aria-pressed="true"]{color:var(--accent);background:var(--accent-soft)}
 .ph-tabs svg{width:22px;height:22px}
-.ph-backdrop{position:fixed;inset:0;background:rgba(5,15,25,.4);z-index:19}
-.ph-sheet{position:fixed;left:0;right:0;bottom:0;max-height:82%;overflow:auto;background:var(--bg);border-radius:14px 14px 0 0;z-index:20;padding:0 16px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 30px rgba(0,0,0,.2)}
+.ph-backdrop{position:fixed;inset:0 0 var(--tabh,0px) 0;background:rgba(5,15,25,.4);z-index:19}
+.ph-sheet{position:fixed;left:0;right:0;bottom:var(--tabh,0px);max-height:calc(82% - var(--tabh,0px));overflow:auto;background:var(--bg);border-radius:14px 14px 0 0;z-index:20;padding:0 16px 16px;box-shadow:0 -10px 30px rgba(0,0,0,.2)}
 .ph-sheet-h{position:sticky;top:0;background:var(--bg);display:flex;justify-content:space-between;align-items:center;padding:12px 0 8px;z-index:1}
 .ph-sheet-h h2{font-family:var(--f-display);font-size:21px;margin:0}
+.ph-sheet-h .btn{min-height:40px;padding:0 16px}
 .ph-sheet [data-panel]{display:grid;gap:12px}
-.ph-sheet .toolbar{justify-content:flex-start}
+.ph-sheet .toolbar{display:grid;gap:8px;justify-content:stretch}
+.ph-sheet .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;width:100%}
+.ph-sheet .seg button{min-height:46px;justify-content:center;padding:0 8px;white-space:nowrap}
+.ph-sheet #tools{grid-auto-flow:row;grid-template-columns:repeat(3,1fr)}
+.ph-sheet #tools button{border-bottom:1px solid var(--line)}
+.ph-sheet #tools button:nth-child(3n){border-right:0}
+.ph-sheet #tools button:nth-child(n+4){border-bottom:0}
+.ph-sheet .sharebox{width:100%}
+.ph-sheet #cardIce{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;align-items:start}
+.ph-sheet #cardIce .card-h,.ph-sheet #cardIce .field:has(input[type=range]){grid-column:1 / -1}
+.ph-sheet #cardIce select{min-height:42px}
+.ph-sheet .actions .btn{min-height:46px}
 .ph-sheet .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .ph-sheet .actions .btn{justify-content:center;padding:11px}
 .ph-sheet .hist{max-height:none}
@@ -408,7 +432,7 @@ body.phone .review .rvlbl{flex-basis:100%;order:-1;font-size:12.5px}
       </div>
       <div class="field">
         <label for="youLvl">Your delivery</label>
-        <select id="youLvl"><option value="perfect">Perfect: goes exactly where called</option><option value="elite">Elite</option><option value="competitive">Competitive</option><option value="club">Club</option></select>
+        <select id="youLvl"><option value="perfect">Perfect</option><option value="elite">Elite</option><option value="competitive">Competitive</option><option value="club">Club</option></select>
       </div>
       <div class="field">
         <label for="cpuLvl">Computer delivery</label>
@@ -424,7 +448,7 @@ body.phone .review .rvlbl{flex-basis:100%;order:-1;font-size:12.5px}
       </div>
       <div class="field">
         <label for="timer">Weight timer</label>
-        <select id="timer"><option value="back">Back line to hog line</option><option value="hog">Hog to hog</option></select>
+        <select id="timer"><option value="back">Back to hog</option><option value="hog">Hog to hog</option></select>
       </div>
     </div>
   </section>
@@ -436,7 +460,7 @@ body.phone .review .rvlbl{flex-basis:100%;order:-1;font-size:12.5px}
     <div class="ph-w">
       <button class="btn ph-step" id="phMinus" aria-label="Lighter by 0.1 second">&minus;</button>
       <div>
-        <div class="ph-wread"><b id="phT"></b><span id="phZone"></span></div>
+        <div class="ph-wread"><b id="phZone"></b><span id="phT"></span></div>
         <input type="range" id="phW" min="0" max="1000" step="1" aria-label="Weight">
         <div class="ph-zones" aria-hidden="true"><span style="left:15%">Guard</span><span style="left:46%">House</span><span style="left:67%">Board</span><span style="left:86%">Hit</span></div>
       </div>
@@ -448,8 +472,8 @@ body.phone .review .rvlbl{flex-basis:100%;order:-1;font-size:12.5px}
 </div>
 <nav class="ph-tabs ph-only" id="phTabs" aria-label="Panels">
   <button data-tab="call" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="18" rx="3" fill="currentColor"/></svg><span>Call</span></button>
-  <button data-tab="read" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg><span>Read</span></button>
-  <button data-tab="end" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>End</span></button>
+  <button data-tab="read" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg><span>Analyze</span></button>
+  <button data-tab="end" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>History</span></button>
   <button data-tab="edit" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1 11-11-3-3L5 16z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span id="phEditLbl">Edit</span></button>
   <button data-tab="more" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/></svg><span>More</span></button>
 </nav>
@@ -1296,8 +1320,9 @@ function renderDial() {
   const pw = $('#phW');
   if (pw) {
     pw.value = Math.round(UI.u * 1000); pw.disabled = !canAnalyze();
-    $('#phT').textContent = T == null ? '\u2014' : (hogMain ? T : bhT).toFixed(1) + 's';
-    $('#phZone').textContent = T == null ? zone : `${zone} \u00b7 ${hogMain ? bhT.toFixed(1) + ' s back\u2013hog' : T.toFixed(1) + ' s hog\u2013hog'}`;
+    // zone, then hog-to-hog / back-to-hog seconds, e.g. "Back 8  13.0s/3.8s"
+    $('#phZone').textContent = zone;
+    $('#phT').textContent = T == null ? '\u2014' : `${T.toFixed(1)}s/${bhT.toFixed(1)}s`;
     $('#phMinus').disabled = $('#phPlus').disabled = !canAnalyze();
   }
 }
@@ -2081,7 +2106,7 @@ $('#btnRandom').onclick = randomScenario;
 $('#wMinus').onclick = () => stepTime(-1);
 $('#wPlus').onclick = () => stepTime(1);
 $('#handle').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || !canAnalyze()) return; UI.spin = +b.dataset.spin; UI.hover = null; renderControls(); renderBroomRead(); updatePreview(); save(); });
-$('#pickTeam').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || controlsLocked()) return; UI.pick = +b.dataset.team; UI.sugs = null; renderAll(); updatePreview(); });
+$('#pickTeam').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || controlsLocked()) return; const tm = +b.dataset.team; UI.pick = PH.on && tm === throwingTeam() ? 1 - tm : tm; UI.sugs = null; renderAll(); updatePreview(); });
 $('#tools').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; UI.tool = b.dataset.tool; main.style.cursor = UI.tool === 'move' ? 'grab' : 'crosshair'; renderControls(); if (PH.on) openPanel('call', true); });
 $('#btnClearPen').onclick = () => { UI.markup = []; draw(); };
 $('#btnClearStones').onclick = () => { if (UI.anim || UI.busy) return; S.stones = []; edited(); updatePreview(); toast('Sheet cleared. Use the Add tools to set up a position.'); };
@@ -2148,7 +2173,7 @@ function openPanel(tab, keepTool) {
   const sh = $('#phSheet'), open = tab !== 'call';
   sh.hidden = !open; $('#phBackdrop').hidden = !open;
   if (open) {
-    $('#phTitle').textContent = { read: 'Analysis', end: 'This end', edit: 'Edit the sheet', more: 'Game & settings' }[tab];
+    $('#phTitle').textContent = { read: 'Analysis', end: 'Shots this end', edit: 'Edit the sheet', more: 'Game & settings' }[tab];
     sh.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== tab && !(tab === 'more' && p.dataset.panel === 'more-tail'); });
     sh.scrollTop = 0;
   }
@@ -2156,6 +2181,7 @@ function openPanel(tab, keepTool) {
 }
 function renderTabs() {
   if (!PH.on) return;
+  document.documentElement.style.setProperty('--tabh', $('#phTabs').offsetHeight + 'px');   // sheets sit above the tab bar so tabs stay tappable
   $('#phTabs').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.tab === PH.tab));
   $('#phEditLbl').textContent = TOOL_NAMES[UI.tool] || 'Edit';
 }
